@@ -1,0 +1,84 @@
+---
+- name: Configure Software Installation GPO
+  hosts: dc
+  gather_facts: no
+  vars:
+    # Use domain admin for GPO operations
+    ansible_user: "SERINI\\Administrator"
+    ansible_password: "P@ssw0rd123!"
+    ansible_connection: winrm
+    ansible_port: 5985
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+
+    gpo_name: "Deploy Software"
+    domain: "serini.lab"
+    # Script content that will run on startup
+    install_script: |
+      $log = "C:\software_install_log.txt"
+      "Starting installation..." | Out-File $log -Append
+      
+      # Install Chocolatey
+      if (-not (Test-Path "$env:ProgramData\chocolatey\bin\choco.exe")) {
+          "Installing Chocolatey..." | Out-File $log -Append
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      }
+
+      # Install Software
+      $choco = "$env:ProgramData\chocolatey\bin\choco.exe"
+      if (Test-Path $choco) {
+          "Installing Chrome..." | Out-File $log -Append
+          & $choco install googlechrome -y
+          
+          "Installing Acrobat Reader..." | Out-File $log -Append
+          & $choco install adobereader -y
+      } else {
+          "Chocolatey not found!" | Out-File $log -Append
+      }
+      "Done." | Out-File $log -Append
+
+  tasks:
+    - name: Install Group Policy Management Tools
+      ansible.windows.win_feature:
+        name: GPMC
+        state: present
+        include_management_tools: true
+
+    - name: Create GPO
+      ansible.windows.win_shell: |
+        $gpo = Get-GPO -Name "{{ gpo_name }}" -ErrorAction SilentlyContinue
+        if (-not $gpo) {
+            New-GPO -Name "{{ gpo_name }}" -Comment "Installs Chrome and Acrobat via Chocolatey"
+        }
+      register: gpo_create
+
+    - name: Link GPO to Domain
+      ansible.windows.win_shell: |
+        Import-Module GroupPolicy
+        $ErrorActionPreference = 'SilentlyContinue'
+        $target = "DC={{ domain.split('.')[0] }},DC={{ domain.split('.')[1] }}"
+        New-GPLink -Name "{{ gpo_name }}" -Target $target -ErrorAction SilentlyContinue | Out-Null
+        exit 0
+
+    - name: Get GPO GUID
+      ansible.windows.win_shell: (Get-GPO -Name "{{ gpo_name }}").Id.Guid
+      register: gpo_guid_out
+      changed_when: false
+
+    - name: Ensure Startup Script directory exists
+      ansible.windows.win_file:
+        path: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{ {{ gpo_guid_out.stdout | trim }} }\\Machine\\Scripts\\Startup"
+        state: directory
+
+    - name: Deploy Startup Script to SYSVOL
+      ansible.windows.win_copy:
+        content: "{{ install_script }}"
+        dest: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{ {{ gpo_guid_out.stdout | trim }} }\\Machine\\Scripts\\Startup\\Install-Software.ps1"
+
+    - name: Configure scripts.ini for Startup Script
+      ansible.windows.win_copy:
+        content: |
+          [Startup]
+          0CmdLine=powershell.exe
+          0Parameters=-ExecutionPolicy Bypass -File \\serini.lab\SysVol\serini.lab\Policies\{ {{ gpo_guid_out.stdout | trim }} }\Machine\Scripts\Startup\Install-Software.ps1
+        dest: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{ {{ gpo_guid_out.stdout | trim }} }\\Machine\\Scripts\\scripts.ini"

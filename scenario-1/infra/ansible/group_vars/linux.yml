@@ -1,0 +1,2 @@
+ansible_user: vagrant
+ansible_ssh_private_key_file: /home/omar/myWork/Proj/scenario-1/infra/vagrant/.vagrant/machines/attacker/vmware_desktop/private_key

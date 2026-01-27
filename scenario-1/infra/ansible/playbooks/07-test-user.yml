@@ -1,0 +1,20 @@
+---
+- name: Create test user
+  hosts: dc
+  gather_facts: no
+  vars:
+    ansible_user: "SERINI\\Administrator"
+    ansible_password: "P@ssw0rd123!"
+    ansible_connection: winrm
+    ansible_port: 5985
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+  tasks:
+    - name: Upload user script
+      ansible.windows.win_copy:
+        src: /home/omar/myWork/Proj/scenario-1/scripts/02-create-test-user.ps1
+        dest: C:\Windows\Temp\02-create-test-user.ps1
+
+    - name: Create test user
+      ansible.windows.win_shell: |
+        powershell.exe -ExecutionPolicy Bypass -File C:\Windows\Temp\02-create-test-user.ps1

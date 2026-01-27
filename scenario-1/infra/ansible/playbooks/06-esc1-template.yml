@@ -1,0 +1,33 @@
+---
+- name: Create ESC1 vulnerable template in AD
+  hosts: dc
+  gather_facts: no
+  vars:
+    ansible_user: "SERINI\\Administrator"
+    ansible_password: "P@ssw0rd123!"
+    ansible_connection: winrm
+    ansible_port: 5985
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+  tasks:
+    - name: Upload template script
+      ansible.windows.win_copy:
+        src: /home/omar/myWork/Proj/scenario-1/scripts/01-create-vulnerable-template.ps1
+        dest: C:\Windows\Temp\01-create-vulnerable-template.ps1
+
+    - name: Create vulnerable template in AD
+      ansible.windows.win_shell: |
+        powershell.exe -ExecutionPolicy Bypass -File C:\Windows\Temp\01-create-vulnerable-template.ps1
+
+    - name: Publish template on CA in AD
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $configNC = (Get-ADRootDSE).configurationNamingContext
+        $enrollPath = "CN=Enrollment Services,CN=Public Key Services,CN=Services,$configNC"
+        $ca = Get-ADObject -SearchBase $enrollPath -LDAPFilter "(cn=SERINI-CA)" -Properties certificateTemplates
+        $templates = @()
+        if ($ca.certificateTemplates) { $templates = @($ca.certificateTemplates) }
+        if ($templates -notcontains "VulnUserAuth") {
+          $templates += "VulnUserAuth"
+          Set-ADObject -Identity $ca.DistinguishedName -Replace @{certificateTemplates=$templates}
+        }

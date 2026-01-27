@@ -1,0 +1,54 @@
+---
+- name: Install user software on Win10
+  hosts: win10
+  gather_facts: no
+  vars:
+    ansible_user: "vagrant"
+    ansible_password: "vagrant"
+    ansible_connection: winrm
+    ansible_port: 5985
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "SERINI\\Administrator"
+    ansible_become_password: "P@ssw0rd123!"
+  tasks:
+    - name: Check for Chocolatey
+      ansible.windows.win_stat:
+        path: C:\ProgramData\chocolatey\bin\choco.exe
+      register: choco_stat
+
+    - name: Download Chocolatey install script
+      ansible.windows.win_get_url:
+        url: https://community.chocolatey.org/install.ps1
+        dest: C:\Windows\Temp\choco.ps1
+      when: not choco_stat.stat.exists
+
+    - name: Install Chocolatey
+      ansible.windows.win_shell: |
+        powershell.exe -ExecutionPolicy Bypass -File C:\Windows\Temp\choco.ps1
+      when: not choco_stat.stat.exists
+
+    - name: Install Chrome
+      ansible.windows.win_shell: |
+        & "$env:ProgramData\chocolatey\bin\choco.exe" install googlechrome -y
+
+    - name: Check for Acrobat
+      ansible.windows.win_shell: |
+        $reader = Test-Path "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
+        $acrobat = Test-Path "C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
+        if ($reader -or $acrobat) { "FOUND=true" } else { "FOUND=false" }
+      register: acrobat_check
+      changed_when: false
+
+    - name: Download Acrobat Reader offline installer (fallback)
+      ansible.windows.win_get_url:
+        url: https://ardownload2.adobe.com/pub/adobe/acrobat/win/AcrobatDC/2500120577/AcroRdrDCx642500120577_MUI.exe
+        dest: C:\Windows\Temp\AcroRdrDCx64_2500120577.exe
+      when: acrobat_check.stdout is search("FOUND=false")
+
+    - name: Install Acrobat Reader offline installer
+      ansible.windows.win_shell: |
+        & "C:\Windows\Temp\AcroRdrDCx64_2500120577.exe" /sAll /msi /norestart /quiet EULA_ACCEPT=YES DISABLEDESKTOPSHORTCUT=1 DISABLE_ARM_SERVICE_INSTALL=1 UPDATE_MODE=0
+      when: acrobat_check.stdout is search("FOUND=false")

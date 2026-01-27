@@ -1,0 +1,21 @@
+Using /etc/ansible/ansible.cfg as config file
+
+PLAY [Configure Software Installation GPO] *************************************
+
+TASK [Install Group Policy Management Tools] ***********************************
+ok: [dc] => {"changed": false, "exitcode": "NoChangeNeeded", "feature_result": [], "reboot_required": false, "success": true}
+
+TASK [Create GPO] **************************************************************
+[ERROR]: Task failed: Module failed: non-zero return code
+Origin: /home/omar/myWork/Proj/scenario-1/infra/ansible/playbooks/03-software-gpo.yml:39:7
+
+37         include_management_tools: true
+38
+39     - name: Create GPO
+         ^ column 7
+
+fatal: [dc]: FAILED! => {"changed": true, "cmd": "$gpo = Get-GPO -Name \"Deploy Software\" -ErrorAction SilentlyContinue\nif (-not $gpo) {\n    New-GPO -Name \"Deploy Software\" -Comment \"Installs Chrome and Acrobat via Chocolatey\"\n}", "delta": "0:00:08.874638", "end": "2026-01-27 01:06:19.148448", "msg": "non-zero return code", "rc": 1, "start": "2026-01-27 01:06:10.273809", "stderr": "Get-GPO : Current security context is not associated with an Active Directory domain or forest.\r\nAt line:1 char:72\r\n+ ... lse; $gpo = Get-GPO -Name \"Deploy Software\" -ErrorAction SilentlyCont ...\r\n+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (:) [Get-GPO], ActiveDirectoryOperationException\r\n    + FullyQualifiedErrorId : System.DirectoryServices.ActiveDirectory.ActiveDirectoryOperationException,Microsoft.Gro \r\n   upPolicy.Commands.GetGpoCommand\r\n \r\nNew-GPO : Current security context is not associated with an Active Directory domain or forest.\r\nAt line:3 char:5\r\n+     New-GPO -Name \"Deploy Software\" -Comment \"Installs Chrome and Acr ...\r\n+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (:) [New-GPO], ActiveDirectoryOperationException\r\n    + FullyQualifiedErrorId : System.DirectoryServices.ActiveDirectory.ActiveDirectoryOperationException,Microsoft.Gro \r\n   upPolicy.Commands.NewGpoCommand", "stderr_lines": ["Get-GPO : Current security context is not associated with an Active Directory domain or forest.", "At line:1 char:72", "+ ... lse; $gpo = Get-GPO -Name \"Deploy Software\" -ErrorAction SilentlyCont ...", "+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", "    + CategoryInfo          : NotSpecified: (:) [Get-GPO], ActiveDirectoryOperationException", "    + FullyQualifiedErrorId : System.DirectoryServices.ActiveDirectory.ActiveDirectoryOperationException,Microsoft.Gro ", "   upPolicy.Commands.GetGpoCommand", " ", "New-GPO : Current security context is not associated with an Active Directory domain or forest.", "At line:3 char:5", "+     New-GPO -Name \"Deploy Software\" -Comment \"Installs Chrome and Acr ...", "+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", "    + CategoryInfo          : NotSpecified: (:) [New-GPO], ActiveDirectoryOperationException", "    + FullyQualifiedErrorId : System.DirectoryServices.ActiveDirectory.ActiveDirectoryOperationException,Microsoft.Gro ", "   upPolicy.Commands.NewGpoCommand"], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+dc                         : ok=1    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+

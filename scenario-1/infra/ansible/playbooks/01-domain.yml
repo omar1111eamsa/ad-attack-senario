@@ -1,0 +1,66 @@
+---
+- name: Base config on all Windows hosts
+  hosts: windows
+  gather_facts: no
+  tasks:
+    - name: Set hostname
+      ansible.windows.win_hostname:
+        name: "{{ inventory_hostname }}"
+      register: hostname_result
+
+    - name: Reboot if hostname changed
+      ansible.windows.win_reboot:
+      when: hostname_result.reboot_required
+
+- name: Build domain on DC
+  hosts: dc
+  gather_facts: no
+  vars:
+    domain_name: "serini.lab"
+    domain_netbios: "SERINI"
+    safe_mode_password: "P@ssw0rd123!"
+  tasks:
+    - name: Install AD DS + DNS
+      ansible.windows.win_feature:
+        name:
+          - AD-Domain-Services
+          - DNS
+        state: present
+        include_management_tools: true
+
+    - name: Promote DC and create forest
+      microsoft.ad.domain:
+        dns_domain_name: "{{ domain_name }}"
+        domain_netbios_name: "{{ domain_netbios }}"
+        safe_mode_password: "{{ safe_mode_password }}"
+      register: domain_create
+
+    - name: Reboot after domain creation
+      ansible.windows.win_reboot:
+      when: domain_create.reboot_required
+
+- name: Join member servers and workstation to domain
+  hosts: ca,win10
+  gather_facts: no
+  vars:
+    domain_name: "serini.lab"
+    domain_admin_user: "SERINI\\Administrator"
+    domain_admin_password: "P@ssw0rd123!"
+  tasks:
+    - name: Set DNS to DC
+      ansible.windows.win_dns_client:
+        adapter_names: "*"
+        ipv4_addresses:
+          - 192.168.56.10
+
+    - name: Join domain
+      microsoft.ad.membership:
+        dns_domain_name: "{{ domain_name }}"
+        domain_admin_user: "{{ domain_admin_user }}"
+        domain_admin_password: "{{ domain_admin_password }}"
+        state: domain
+      register: domain_join
+
+    - name: Reboot after domain join
+      ansible.windows.win_reboot:
+      when: domain_join.reboot_required

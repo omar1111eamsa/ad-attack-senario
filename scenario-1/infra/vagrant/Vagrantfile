@@ -1,0 +1,69 @@
+Vagrant.configure("2") do |config|
+  config.vm.box_check_update = false
+  config.vm.boot_timeout = 1200
+  config.winrm.retry_limit = 60
+  config.winrm.retry_delay = 10
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  NET = "192.168.56"
+  BOX_SERVER = "gusztavvargadr/windows-server-2019-standard"
+  BOX_WIN10 = "gusztavvargadr/windows-10-21h2-enterprise"
+  BOX_ATTACKER = "kalilinux/rolling"
+
+  def win_vm(config, name, box, ip , mem, cpus=1)
+    config.vm.define name do |node|
+      node.vm.box = box
+      node.vm.hostname = name
+      node.vm.communicator = "winrm"
+      node.vm.network "private_network", ip: ip
+      node.vm.provider "vmware_desktop" do |v|
+        v.vmx["memsize"] = mem.to_s
+        v.vmx["numvcpus"] = cpus.to_s
+        v.linked_clone = false
+        v.gui = true
+      end
+      
+    end
+  end
+
+  def linux_vm(config, name, box, ip, mem, cpus=1)
+    config.vm.define name do |node|
+      node.vm.box = box
+      node.vm.hostname = name
+      node.vm.network "private_network", ip: ip
+      node.vm.provider "vmware_desktop" do |v|
+        v.vmx["memsize"] = mem.to_s
+        v.vmx["numvcpus"] = cpus.to_s
+        v.linked_clone = false
+        v.vmx["ethernet0.pcislotnumber"] = "33"
+        v.vmx["ethernet1.pcislotnumber"] = "192"
+        v.gui = true
+      end
+    end
+  end
+
+  win_vm(config, "dc",        BOX_SERVER, "#{NET}.10", 2048, 1)
+  win_vm(config, "ca",        BOX_SERVER, "#{NET}.20", 2048, 1)
+  win_vm(config, "win10",     BOX_WIN10,  "#{NET}.40", 3072, 1)
+  config.vm.define "attacker" do |attacker|
+    attacker.vm.box = BOX_ATTACKER
+    attacker.vm.hostname = "attacker"
+    attacker.vm.network "private_network", ip: "#{NET}.50"
+
+    attacker.vm.provider "vmware_desktop" do |v|
+      v.vmx["memsize"] = "2048"
+      v.vmx["numvcpus"] = "1"
+      v.linked_clone = false
+      v.vmx["ethernet0.pcislotnumber"] = "33"
+      v.vmx["ethernet1.pcislotnumber"] = "192"
+      v.gui = true
+    end
+
+    attacker.vm.provision "ansible" do |ansible|
+      ansible.playbook = "../ansible/playbooks/site.yml"
+      ansible.inventory_path = "../ansible/inventory.yml"
+      ansible.config_file = "../ansible/ansible.cfg"
+      ansible.limit = "all"
+    end
+  end
+end

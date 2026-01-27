@@ -1,0 +1,90 @@
+---
+# Playbook: Configure LDAPS on DC for Certipy compatibility
+# Uses self-signed certificate since CA may not be reachable initially
+
+- name: Configure LDAPS on Domain Controller
+  hosts: dc
+  gather_facts: no
+  vars:
+    ansible_user: "SERINI\\Administrator"
+    ansible_password: "P@ssw0rd123!"
+    ansible_connection: winrm
+    ansible_port: 5985
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+
+  tasks:
+    - name: Open firewall port 636 (LDAPS)
+      ansible.windows.win_shell: |
+        if (-not (Get-NetFirewallRule -DisplayName "LDAPS" -ErrorAction SilentlyContinue)) {
+          New-NetFirewallRule -DisplayName "LDAPS" -Direction Inbound -Protocol TCP -LocalPort 636 -Action Allow
+        }
+      args:
+        executable: powershell.exe
+
+    - name: Upload LDAPS certificate script
+      ansible.windows.win_copy:
+        content: |
+          $dnsName = "dc.serini.lab"
+          $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object {
+            $_.Subject -match "dc.serini.lab" -and $_.NotAfter -gt (Get-Date)
+          } | Select-Object -First 1
+          
+          if (-not $cert) {
+            Write-Host "Creating new self-signed certificate for LDAPS..."
+            $cert = New-SelfSignedCertificate `
+              -DnsName $dnsName, "dc", "serini.lab" `
+              -CertStoreLocation Cert:\LocalMachine\My `
+              -KeyAlgorithm RSA `
+              -KeyLength 2048 `
+              -KeyExportPolicy Exportable `
+              -NotAfter (Get-Date).AddYears(5) `
+              -KeyUsage DigitalSignature, KeyEncipherment `
+              -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.1")
+            Write-Host "Certificate created with thumbprint: $($cert.Thumbprint)"
+          } else {
+            Write-Host "Certificate already exists with thumbprint: $($cert.Thumbprint)"
+          }
+          
+          # Export and import to Trusted Root for self-signed trust
+          $certPath = "C:\Windows\Temp\dc-ldaps.cer"
+          Export-Certificate -Cert $cert -FilePath $certPath -Force | Out-Null
+          Import-Certificate -FilePath $certPath -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          Write-Host "Certificate added to Trusted Root store"
+        dest: C:\Windows\Temp\create-ldaps-cert.ps1
+
+    - name: Execute LDAPS certificate creation
+      ansible.windows.win_shell: powershell.exe -ExecutionPolicy Bypass -File C:\Windows\Temp\create-ldaps-cert.ps1
+      args:
+        executable: powershell.exe
+      register: cert_result
+
+    - name: Display certificate status
+      ansible.builtin.debug:
+        var: cert_result.stdout_lines
+
+    - name: Force NTDS to reload certificates
+      ansible.windows.win_shell: |
+        gpupdate /force
+        certutil -pulse
+        Write-Host "Certificate reload triggered"
+      args:
+        executable: powershell.exe
+      ignore_errors: yes
+
+    - name: Verify LDAPS is listening on port 636
+      ansible.windows.win_shell: |
+        Start-Sleep -Seconds 5
+        $result = Test-NetConnection -ComputerName localhost -Port 636 -WarningAction SilentlyContinue
+        if ($result.TcpTestSucceeded) {
+          Write-Host "SUCCESS: LDAPS is listening on port 636"
+        } else {
+          Write-Host "NOTE: LDAPS may require a reboot to fully activate"
+        }
+      args:
+        executable: powershell.exe
+      register: ldaps_check
+
+    - name: Display LDAPS status
+      ansible.builtin.debug:
+        var: ldaps_check.stdout_lines
