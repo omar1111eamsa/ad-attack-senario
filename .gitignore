@@ -1,2 +1,48 @@
+# Vagrant
 .vagrant.d
-scenario-1/infra/vagrant/.vagrant
+.vagrant/
+scenario-1/infra/vagrant/.vagrant/
+*.box
+
+# Ansible
+*.retry
+*.log
+.ansible/
+__pycache__/
+
+# Certificates and Keys
+*.pfx
+*.pem
+*.key
+*.crt
+*.cer
+*.ccache
+*.p12
+*.der
+
+# Logs
+*.log
+*.out
+
+# OS Files
+.DS_Store
+Thumbs.db
+*~
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Sensitive Data
+*password*
+*secret*
+administrator.pfx
+administrator.ccache
+
+# Temporary Files
+*.tmp
+*.temp
+/tmp/
