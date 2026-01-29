@@ -87,31 +87,31 @@ vagrant up
 
 **⏱️ First run takes 30-60 minutes** depending on your internet speed and hardware.
 
-### 3b. First-time setup (VMware only)
+### 3b. VMware note (Windows networking)
 
-VMware does not auto-configure the private network on Windows VMs. Ansible will fail with "No route to host" until those IPs are set.
+VMware often does **not** auto-configure the private NIC IPs on Windows guests. This repo handles that automatically during `vagrant up`:
 
-1. **Bootstrap network** (configures DC and Win10 via forwarded WinRM):
-   ```bash
-   ./scenario-1/scripts/bootstrap-network.sh
-   ```
-2. **If CA fails** ("Connection reset by peer"): open the **CA** VM (VMware console or RDP), run PowerShell as Administrator, then:
-   ```powershell
-   # Copy or paste from scenario-1/scripts/configure-network-ca.ps1
-   & "C:\path\to\Proj\scenario-1\scripts\configure-network-ca.ps1"
-   ```
-   Or run the script contents manually (see `scenario-1/scripts/configure-network-ca.ps1`).
-3. **Run provision:**
-   ```bash
-   cd scenario-1/infra/vagrant && vagrant provision
-   ```
+- The `Vagrantfile` runs a **host-side trigger** after the `attacker` VM is up.
+- That trigger executes `scenario-1/infra/vagrant/auto-provision.sh`, which:
+  - **Bootstraps Windows private IPs** via WinRM port-forwarding (no manual IP config needed)
+  - Runs the full Ansible `playbooks/site.yml`
+
+If you need to re-run provisioning manually:
+
+```bash
+cd scenario-1/infra/vagrant
+./auto-provision.sh
+```
 
 ### 4. Wait for Provisioning
 
 The setup is fully automated. You'll see Ansible playbooks running automatically. Wait until you see:
 
 ```
-==> attacker: Running provisioner: ansible...
+==> attacker: Running action triggers after up ...
+==> attacker: Bootstrapping Windows IPs and provisioning lab (host-side)
+==> [auto] --- Phase 1: Bootstrap Windows private-network IPs (DC, CA, Win10) ---
+==> [auto] --- Phase 2: Full lab provisioning (site.yml) ---
 ...
 PLAY RECAP *********************************************************************
 dc                         : ok=XX    changed=XX    ...
@@ -177,6 +177,7 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 │   │   │   ├── playbooks/
 │   │   │   │   ├── site.yml          # Master playbook
 │   │   │   │   ├── 00-network.yml    # Network setup
+│   │   │   │   ├── 00-bootstrap-network-forwarded.yml # Bootstrap IPs via forwarded WinRM
 │   │   │   │   ├── 01-domain.yml     # AD Domain setup
 │   │   │   │   ├── 02-adcs.yml       # Certificate Authority
 │   │   │   │   ├── 06-esc1-template.yml  # Vulnerable template
@@ -215,17 +216,19 @@ vagrant ssh win10    # Windows 10 client
 vagrant ssh attacker # Kali attacker
 ```
 
+**VMware GUI:** This lab is configured to **show the VM windows** in VMware (`v.gui = true`). If you want headless mode, set `v.gui = false` in `scenario-1/infra/vagrant/Vagrantfile`.
+
 ### Re-run Provisioning
 
 If you need to re-run the Ansible setup:
 
 ```bash
-# Re-provision all VMs
-vagrant provision
-
-# Re-provision specific VM
-vagrant provision attacker
+# Re-run bootstrap + provisioning (recommended)
+cd scenario-1/infra/vagrant
+./auto-provision.sh
 ```
+
+Note: this repo uses a **host-side trigger** during `vagrant up` (not a guest provisioner). `vagrant provision` alone may do nothing unless you run `./auto-provision.sh`.
 
 ## 🧪 Manual Ansible Execution
 
@@ -270,9 +273,11 @@ vagrant status
 
 ### VMware Network Configuration Issue
 
-VMware cannot auto-configure secondary network adapters on Windows VMs. You'll need to manually set static IPs:
+VMware often cannot auto-configure secondary network adapters on Windows VMs.
 
-**On each Windows VM (DC, CA, Win10)**, open PowerShell as Administrator and run:
+This repo now auto-bootstraps Windows IPs during `vagrant up` via `auto-provision.sh`.
+
+If you still need to fix a Windows VM manually, open PowerShell as Administrator and run (example for DC):
 
 ```powershell
 # DC: 192.168.58.10
@@ -286,9 +291,14 @@ Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192
 
 Alternatively, use the provided scripts in `scenario-1/scripts/configure-network-*.ps1`.
 
-After configuring networks, run: `vagrant provision attacker`
+After configuring networks, re-run:
 
-**Provisioning order:** `00-network.yml` runs first (static IPs + DNS on Windows). If Ansible cannot reach Windows hosts (e.g. before manual network config), that playbook will fail—configure networks manually, then run `vagrant provision` again.
+```bash
+cd scenario-1/infra/vagrant
+./auto-provision.sh
+```
+
+**Provisioning order:** `00-network.yml` runs first (static IPs + DNS on Windows). If Ansible cannot reach a Windows host, fix networking and then re-run `./auto-provision.sh`.
 
 ### Ansible Connection Errors
 

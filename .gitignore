@@ -46,3 +46,12 @@ administrator.ccache
 *.tmp
 *.temp
 /tmp/
+
+# Local run reports / generated outputs (do not commit)
+LAB_STATUS*.md
+SCENARIO1_*.md
+scenario-1/docs/SCENARIO1_FULL_ATTACK.md
+
+# Certipy outputs (generated during lab runs)
+*_Certipy.txt
+*_Certipy.json
