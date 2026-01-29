@@ -52,7 +52,7 @@ if (-not $existing) {
 # Ensure Domain Users can Enroll
 $acl = Get-Acl "AD:$templateDn"
 $domainUsers = New-Object System.Security.Principal.NTAccount("SERINI", "Domain Users")
-$enrollGuid = [Guid]"a05b8cc2-17bc-4802-a710-e7c15ab866a2"
+$enrollGuid = [Guid]"0e10c968-78fb-11d2-90d4-00c04f79dc55"
 $rule = New-Object System.DirectoryServices.ActiveDirectoryAccessRule($domainUsers, "ExtendedRight", "Allow", $enrollGuid)
 $acl.AddAccessRule($rule)
 Set-Acl -Path "AD:$templateDn" -AclObject $acl

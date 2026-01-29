@@ -4,12 +4,17 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_DIR="$(cd "$HERE/../ansible" && pwd)"
 
+log() { echo "==> [auto] $*"; }
+
 get_forwarded_5985_port() {
   local vm="$1"
   # Example line: "  5985 (guest) => 2201 (host)"
   # Fields: $1=5985, $2=(guest), $3=>, $4=2201, $5=(host)
   vagrant port "$vm" | awk '/5985 \(guest\)/ {print $4}' | head -n1
 }
+
+log "Starting auto-provision (bootstrap Windows IPs, then full lab)."
+log "Fetching Vagrant WinRM forwarded ports..."
 
 dc_port="$(get_forwarded_5985_port dc)"
 ca_port="$(get_forwarded_5985_port ca)"
@@ -20,6 +25,9 @@ if [[ -z "${dc_port:-}" || -z "${ca_port:-}" || -z "${win10_port:-}" ]]; then
   echo "Try: vagrant port dc; vagrant port ca; vagrant port win10"
   exit 1
 fi
+
+log "Ports: dc=127.0.0.1:${dc_port}  ca=127.0.0.1:${ca_port}  win10=127.0.0.1:${win10_port}"
+log "Building temporary inventory for bootstrap..."
 
 tmp_inv="$(mktemp -t vagrant-forwarded-winrm.XXXXXX.yml)"
 trap 'rm -f "$tmp_inv"' EXIT
@@ -50,12 +58,17 @@ all:
         ansible_winrm_server_cert_validation: ignore
 EOF
 
-echo "==> [auto] Bootstrapping Windows private-network IPs via forwarded WinRM..."
+log "--- Phase 1: Bootstrap Windows private-network IPs (DC, CA, Win10) ---"
+log "Running 00-bootstrap-network-forwarded.yml via forwarded WinRM..."
 cd "$ANSIBLE_DIR"
 ansible-playbook -i "$tmp_inv" playbooks/00-bootstrap-network-forwarded.yml
+log "Bootstrap finished."
 
-echo "==> [auto] Running full lab provisioning (site.yml)..."
+log "--- Phase 2: Full lab provisioning (site.yml) ---"
+log "Plays: 00-network, 01-domain, 02-adcs, 08-ldaps, 03-software-gpo, 04-kali, 05-win10, 06-esc1, 07-test-user."
+log "Running site.yml (can take 15–30+ min)..."
 ansible-playbook -i inventory.yml playbooks/site.yml
+log "Site.yml finished."
 
-echo "==> [auto] Done."
+log "--- Done. Run: vagrant ssh attacker  (then certipy find ... -vulnerable to check ESC1) ---"
 

