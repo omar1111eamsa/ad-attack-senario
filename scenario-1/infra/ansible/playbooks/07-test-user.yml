@@ -12,7 +12,7 @@
   tasks:
     - name: Upload user script
       ansible.windows.win_copy:
-        src: /home/omar/myWork/Proj/scenario-1/scripts/02-create-test-user.ps1
+        src: "{{ playbook_dir }}/../../../scripts/02-create-test-user.ps1"
         dest: C:\Windows\Temp\02-create-test-user.ps1
 
     - name: Create test user

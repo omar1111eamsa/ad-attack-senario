@@ -35,6 +35,12 @@
         safe_mode_password: "{{ safe_mode_password }}"
       register: domain_create
 
+    - name: Set domain Administrator password to expected value
+      ansible.windows.win_shell: |
+        $safe = ConvertTo-SecureString "{{ safe_mode_password }}" -AsPlainText -Force
+        Set-ADAccountPassword -Identity "CN=Administrator,CN=Users,DC={{ domain_name.split('.')[0] }},DC={{ domain_name.split('.')[1] }}" -Reset -NewPassword $safe
+      when: domain_create is succeeded
+
     - name: Reboot after domain creation
       ansible.windows.win_reboot:
       when: domain_create.reboot_required
@@ -51,7 +57,7 @@
       ansible.windows.win_dns_client:
         adapter_names: "*"
         ipv4_addresses:
-          - 192.168.56.10
+          - 192.168.58.10
 
     - name: Join domain
       microsoft.ad.membership:

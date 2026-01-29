@@ -3,12 +3,18 @@ all:
     windows:
       hosts:
         dc:
-          ansible_host: 192.168.56.10
+          ansible_host: 192.168.58.10
         ca:
-          ansible_host: 192.168.56.20
+          ansible_host: 192.168.58.20
         win10:
-          ansible_host: 192.168.56.40
+          ansible_host: 192.168.58.40
+      vars:
+        ansible_user: vagrant
+        ansible_password: vagrant
+        ansible_connection: winrm
+        ansible_winrm_transport: ntlm
+        ansible_winrm_server_cert_validation: ignore
     linux:
       hosts:
         attacker:
-          ansible_host: 192.168.56.50
+          ansible_host: 192.168.58.50

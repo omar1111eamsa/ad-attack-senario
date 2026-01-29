@@ -1,0 +1,44 @@
+---
+# Bootstrap Windows private-network IPs using Vagrant WinRM port-forwarding.
+# This is meant to be run from the HOST with an inventory that points to:
+#   ansible_host: 127.0.0.1
+#   ansible_port: <forwarded 5985 host port>
+# and sets per-host var:
+#   desired_ip: 192.168.58.x
+
+- name: Bootstrap Windows static IPs (forwarded WinRM)
+  hosts: windows
+  gather_facts: no
+  vars:
+    dc_ip: 192.168.58.10
+  tasks:
+    - name: "[bootstrap] Configuring {{ inventory_hostname }} -> {{ desired_ip }}"
+      ansible.builtin.debug:
+        msg: "Configuring {{ inventory_hostname }} -> {{ desired_ip }} (forwarded WinRM)"
+      run_once: false
+
+    - name: Configure static IP on private adapter (last Up adapter)
+      ansible.windows.win_shell: |
+        $desired = "{{ desired_ip }}"
+        if (-not $desired) { throw "desired_ip is not set for {{ inventory_hostname }}" }
+
+        $script = 'Start-Sleep -Seconds 20; $ErrorActionPreference="SilentlyContinue"; $cfg = Get-NetIPConfiguration | Where-Object { $_.NetAdapter.Status -eq "Up" -and -not $_.IPv4DefaultGateway } | Select-Object -Last 1; if (-not $cfg) { $cfg = Get-NetIPConfiguration | Where-Object { $_.NetAdapter.Status -eq "Up" } | Select-Object -Last 1 }; if (-not $cfg) { throw "No active adapter found" }; $ifName = $cfg.InterfaceAlias; $desired = "__DESIRED__"; $dc = "__DC__"; $hasDesired = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -eq $desired }; if ($hasDesired) { Write-Host "Already configured: $desired"; exit 0 }; Get-NetIPAddress -InterfaceAlias $ifName -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -ne "127.0.0.1" } | ForEach-Object { Remove-NetIPAddress -InterfaceAlias $ifName -IPAddress $_.IPAddress -Confirm:$false -ErrorAction SilentlyContinue }; New-NetIPAddress -InterfaceAlias $ifName -IPAddress $desired -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null; Set-DnsClientServerAddress -InterfaceAlias $ifName -ServerAddresses $dc -ErrorAction SilentlyContinue; Write-Host "Configured $desired on $ifName"'
+
+        $script = $script.Replace("__DESIRED__", $desired).Replace("__DC__", "{{ dc_ip }}")
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+        Start-Process -FilePath powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -EncodedCommand $encoded" -WindowStyle Hidden | Out-Null
+        Write-Host "Queued network config for $desired"
+      ignore_unreachable: true
+    - name: "[bootstrap] Waiting for WinRM on {{ desired_ip }}:5985 (up to 5 min)"
+      ansible.builtin.wait_for:
+        host: "{{ desired_ip }}"
+        port: 5985
+        delay: 10
+        timeout: 300
+      delegate_to: localhost
+      ignore_errors: true
+      register: wait_winrm
+    - name: "[bootstrap] Warn if WinRM wait failed (e.g. Win10 unreachable)"
+      ansible.builtin.debug:
+        msg: "WinRM wait failed for {{ desired_ip }} (timeout or unreachable). Site.yml may fail for this host."
+      when: wait_winrm is failed

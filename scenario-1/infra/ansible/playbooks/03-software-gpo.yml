@@ -46,9 +46,9 @@
 
     - name: Create GPO
       ansible.windows.win_shell: |
-        $gpo = Get-GPO -Name "{{ gpo_name }}" -ErrorAction SilentlyContinue
+        $gpo = Get-GPO -Name "{{ gpo_name }}" -Domain "{{ domain }}" -ErrorAction SilentlyContinue
         if (-not $gpo) {
-            New-GPO -Name "{{ gpo_name }}" -Comment "Installs Chrome and Acrobat via Chocolatey"
+            New-GPO -Name "{{ gpo_name }}" -Domain "{{ domain }}" -Comment "Installs Chrome and Acrobat via Chocolatey"
         }
       register: gpo_create
 
@@ -57,28 +57,28 @@
         Import-Module GroupPolicy
         $ErrorActionPreference = 'SilentlyContinue'
         $target = "DC={{ domain.split('.')[0] }},DC={{ domain.split('.')[1] }}"
-        New-GPLink -Name "{{ gpo_name }}" -Target $target -ErrorAction SilentlyContinue | Out-Null
+        New-GPLink -Name "{{ gpo_name }}" -Target $target -Domain "{{ domain }}" -ErrorAction SilentlyContinue | Out-Null
         exit 0
 
     - name: Get GPO GUID
-      ansible.windows.win_shell: (Get-GPO -Name "{{ gpo_name }}").Id.Guid
+      ansible.windows.win_shell: (Get-GPO -Name "{{ gpo_name }}" -Domain "{{ domain }}").Id.Guid
       register: gpo_guid_out
       changed_when: false
 
     - name: Ensure Startup Script directory exists
       ansible.windows.win_file:
-        path: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{ {{ gpo_guid_out.stdout | trim }} }\\Machine\\Scripts\\Startup"
+        path: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{{ '{' ~ gpo_guid_out.stdout | trim ~ '}' }}\\Machine\\Scripts\\Startup"
         state: directory
 
     - name: Deploy Startup Script to SYSVOL
       ansible.windows.win_copy:
         content: "{{ install_script }}"
-        dest: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{ {{ gpo_guid_out.stdout | trim }} }\\Machine\\Scripts\\Startup\\Install-Software.ps1"
+        dest: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{{ '{' ~ gpo_guid_out.stdout | trim ~ '}' }}\\Machine\\Scripts\\Startup\\Install-Software.ps1"
 
     - name: Configure scripts.ini for Startup Script
       ansible.windows.win_copy:
         content: |
           [Startup]
           0CmdLine=powershell.exe
-          0Parameters=-ExecutionPolicy Bypass -File \\serini.lab\SysVol\serini.lab\Policies\{ {{ gpo_guid_out.stdout | trim }} }\Machine\Scripts\Startup\Install-Software.ps1
-        dest: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{ {{ gpo_guid_out.stdout | trim }} }\\Machine\\Scripts\\scripts.ini"
+          0Parameters=-ExecutionPolicy Bypass -File \\serini.lab\SysVol\serini.lab\Policies\{{ '{' ~ gpo_guid_out.stdout | trim ~ '}' }}\Machine\Scripts\Startup\Install-Software.ps1
+        dest: "C:\\Windows\\SYSVOL\\sysvol\\{{ domain }}\\Policies\\{{ '{' ~ gpo_guid_out.stdout | trim ~ '}' }}\\Machine\\Scripts\\scripts.ini"

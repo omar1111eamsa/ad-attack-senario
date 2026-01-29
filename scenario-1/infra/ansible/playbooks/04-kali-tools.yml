@@ -50,3 +50,14 @@
         path: /home/vagrant/.profile
         line: 'export PATH="$HOME/.local/bin:$PATH"'
         create: true
+
+    - name: Add domain hosts for Certipy (dc, ca, serini.lab)
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ item.line }}"
+        create: true
+      loop:
+        - { line: "192.168.58.10  dc.serini.lab dc serini.lab" }
+        - { line: "192.168.58.20  ca.serini.lab ca" }
+      loop_control:
+        label: "{{ item.line }}"

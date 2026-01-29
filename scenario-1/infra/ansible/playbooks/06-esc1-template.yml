@@ -12,7 +12,7 @@
   tasks:
     - name: Upload template script
       ansible.windows.win_copy:
-        src: /home/omar/myWork/Proj/scenario-1/scripts/01-create-vulnerable-template.ps1
+        src: "{{ playbook_dir }}/../../../scripts/01-create-vulnerable-template.ps1"
         dest: C:\Windows\Temp\01-create-vulnerable-template.ps1
 
     - name: Create vulnerable template in AD

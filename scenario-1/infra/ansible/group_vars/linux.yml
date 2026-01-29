@@ -1,2 +1,3 @@
 ansible_user: vagrant
-ansible_ssh_private_key_file: /home/omar/myWork/Proj/scenario-1/infra/vagrant/.vagrant/machines/attacker/vmware_desktop/private_key
+# Update this path if you run Ansible from a different project location. Relative to ansible dir: ../vagrant/.vagrant/machines/attacker/vmware_desktop/private_key
+ansible_ssh_private_key_file: ../vagrant/.vagrant/machines/attacker/vmware_desktop/private_key

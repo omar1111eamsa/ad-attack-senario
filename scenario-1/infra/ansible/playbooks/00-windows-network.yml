@@ -1,0 +1,76 @@
+---
+- name: Configure DC network
+  hosts: dc
+  gather_facts: no
+  vars:
+    ansible_host: 127.0.0.1
+    ansible_port: 55985
+    ansible_user: vagrant
+    ansible_password: vagrant
+    ansible_connection: winrm
+    ansible_winrm_transport: ntlm
+    ansible_winrm_scheme: http
+    ansible_winrm_server_cert_validation: ignore
+  tasks:
+    - name: Configure static IP on secondary adapter
+      ansible.windows.win_shell: |
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -Last 1
+        $existingIP = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {$_.IPAddress -eq '192.168.58.10'}
+        if (-not $existingIP) {
+          New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress 192.168.58.10 -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null
+          Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192.168.58.10
+          Write-Host "DC network configured: 192.168.58.10"
+        } else {
+          Write-Host "DC network already configured"
+        }
+
+- name: Configure CA network
+  hosts: ca
+  gather_facts: no
+  vars:
+    ansible_host: 127.0.0.1
+    ansible_port: 2201
+    ansible_user: vagrant
+    ansible_password: vagrant
+    ansible_connection: winrm
+    ansible_winrm_transport: ntlm
+    ansible_winrm_scheme: http
+    ansible_winrm_server_cert_validation: ignore
+  tasks:
+    - name: Configure static IP on secondary adapter
+      ansible.windows.win_shell: |
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -Last 1
+        $existingIP = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {$_.IPAddress -eq '192.168.58.20'}
+        if (-not $existingIP) {
+          New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress 192.168.58.20 -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null
+          Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192.168.58.10
+          Write-Host "CA network configured: 192.168.58.20"
+        } else {
+          Write-Host "CA network already configured"
+        }
+
+- name: Configure Win10 network
+  hosts: win10
+  gather_facts: no
+  vars:
+    ansible_host: 127.0.0.1
+    ansible_port: 2205
+    ansible_user: vagrant
+    ansible_password: vagrant
+    ansible_connection: winrm
+    ansible_winrm_transport: ntlm
+    ansible_winrm_scheme: http
+    ansible_winrm_server_cert_validation: ignore
+  tasks:
+    - name: Configure static IP on secondary adapter
+      ansible.windows.win_shell: |
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -Last 1
+        $existingIP = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {$_.IPAddress -eq '192.168.58.40'}
+        if (-not $existingIP) {
+          New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress 192.168.58.40 -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null
+          Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192.168.58.10
+          Write-Host "Win10 network configured: 192.168.58.40"
+        } else {
+          Write-Host "Win10 network already configured"
+        }
+

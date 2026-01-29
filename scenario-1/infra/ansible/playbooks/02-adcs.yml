@@ -22,6 +22,11 @@
         name: ADCS-Cert-Authority
         state: present
         include_management_tools: true
+      register: adcs_role
+
+    - name: Reboot if AD CS role requires it
+      ansible.windows.win_reboot:
+      when: adcs_role.reboot_required | default(false)
 
     - name: Configure Enterprise Root CA
       ansible.windows.win_shell: |
@@ -36,6 +41,8 @@
           -Force
       args:
         executable: powershell.exe
+      register: ca_config
+      failed_when: "'already installed' not in ca_config.stderr"
 
     - name: Configure CA Firewall Rules
       ansible.windows.win_shell: |

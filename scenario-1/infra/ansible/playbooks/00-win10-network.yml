@@ -1,0 +1,30 @@
+---
+- name: Configure Win10 static IP via Ansible
+  hosts: win10
+  gather_facts: no
+  vars:
+    ansible_host: 127.0.0.1
+    ansible_port: 2205
+    ansible_user: vagrant
+    ansible_password: vagrant
+    ansible_connection: winrm
+    ansible_winrm_transport: ntlm
+    ansible_winrm_scheme: http
+    ansible_winrm_server_cert_validation: ignore
+  tasks:
+    - name: Configure static IP on secondary adapter
+      ansible.windows.win_shell: |
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -Last 1
+        $existingIP = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {$_.IPAddress -eq '192.168.58.40'}
+        if (-not $existingIP) {
+          New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress 192.168.58.40 -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null
+          Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192.168.58.10
+          Write-Host "Win10 network configured: 192.168.58.40"
+        } else {
+          Write-Host "Win10 network already configured"
+        }
+      register: network_result
+      
+    - name: Display network configuration result
+      ansible.builtin.debug:
+        var: network_result.stdout_lines
