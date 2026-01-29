@@ -1,5 +1,6 @@
 ---
 - import_playbook: 00-network.yml
+- import_playbook: 98-enable-icmp.yml
 - import_playbook: 01-domain.yml
 - import_playbook: 02-adcs.yml
 - import_playbook: 08-ldaps-config.yml
