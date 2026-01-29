@@ -1,0 +1,27 @@
+---
+- name: Simulate User Logon for Mimikatz
+  hosts: win10
+  gather_facts: no
+  vars:
+    ansible_user: "vagrant"
+    ansible_password: "vagrant"
+    ansible_connection: winrm
+    ansible_winrm_transport: ntlm
+    ansible_winrm_server_cert_validation: ignore
+
+  tasks:
+    - name: Run process as John Doe to cache creds
+      ansible.windows.win_shell: |
+        $password = ConvertTo-SecureString "Summer2024!" -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential("SERINI\jdoe", $password)
+        Start-Process powershell.exe -Credential $cred -ArgumentList "-NoProfile -Command Start-Sleep -Seconds 300" -WindowStyle Hidden
+      async: 310
+      poll: 0
+
+    - name: Run process as Domain Admin to cache creds
+      ansible.windows.win_shell: |
+        $password = ConvertTo-SecureString "P@ssw0rd123!" -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential("SERINI\Administrator", $password)
+        Start-Process powershell.exe -Credential $cred -ArgumentList "-NoProfile -Command Start-Sleep -Seconds 300" -WindowStyle Hidden
+      async: 310
+      poll: 0
