@@ -3,19 +3,9 @@
   hosts: ca
   gather_facts: no
   vars:
-    # Use domain admin for AD CS deployment
-    ansible_user: "SERINI\\Administrator"
-    ansible_password: "P@ssw0rd123!"
-    ansible_connection: winrm
-    ansible_port: 5985
-    ansible_winrm_transport: ntlm
-    ansible_winrm_server_cert_validation: ignore
-    ansible_become: yes
-    ansible_become_method: runas
-    ansible_become_user: "SERINI\\Administrator"
-    ansible_become_password: "P@ssw0rd123!"
-
     ca_common_name: "SERINI-CA"
+    domain_user: "SERINI\\Administrator"
+    domain_password: "P@ssw0rd123!"
   tasks:
     - name: Install AD CS role
       ansible.windows.win_feature:
@@ -43,6 +33,11 @@
         executable: powershell.exe
       register: ca_config
       failed_when: "'already installed' not in ca_config.stderr"
+      become: yes
+      become_method: runas
+      become_user: "{{ domain_user }}"
+      vars:
+        ansible_become_password: "{{ domain_password }}"
 
     - name: Configure CA Firewall Rules
       ansible.windows.win_shell: |

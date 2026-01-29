@@ -1,28 +1,28 @@
 ---
-- name: Configure static IPs on Windows hosts
+# Network verification for Libvirt
+# Libvirt automatically configures static IPs, we just verify and set DNS
+
+- name: Verify network configuration on Windows hosts
   hosts: windows
   gather_facts: no
   vars:
-    dc_ip: 192.168.58.10
+    dc_ip: 192.168.121.10
   tasks:
-    - name: Set static IP on primary adapter
-      ansible.windows.win_shell: |
-        $if = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -Last 1
-        if (-not $if) { throw "No active adapter found" }
-        $desired = "{{ ansible_host }}"
-        $current = (Get-NetIPAddress -InterfaceAlias $if.Name -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -ne "127.0.0.1" } | Select-Object -First 1).IPAddress
-        $hasDesired = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -eq $desired }
-        if ($hasDesired) { return }
-        if ($current -and $current -ne $desired) {
-          Get-NetIPAddress -InterfaceAlias $if.Name -AddressFamily IPv4 -ErrorAction SilentlyContinue | Remove-NetIPAddress -Confirm:$false
-        }
-        try {
-          New-NetIPAddress -InterfaceAlias $if.Name -IPAddress $desired -PrefixLength 24 -ErrorAction Stop
-        } catch {
-          if ($_.Exception.Message -notmatch 'already exists') { throw }
-        }
+    - name: Wait for WinRM to be available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+        delay: 10
 
-    - name: Set DNS to DC
+    - name: Verify correct IP address is assigned
+      ansible.windows.win_shell: |
+        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -eq "{{ ansible_host }}"})
+        if (-not $ip) {
+          throw "Expected IP {{ ansible_host }} not found"
+        }
+        Write-Host "IP verified: {{ ansible_host }}"
+      register: ip_check
+
+    - name: Configure DNS to point to DC
       ansible.windows.win_dns_client:
         adapter_names: "*"
         ipv4_addresses:

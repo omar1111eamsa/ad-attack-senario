@@ -3,11 +3,11 @@ all:
     windows:
       hosts:
         dc:
-          ansible_host: 192.168.58.10
+          ansible_host: 192.168.121.10
         ca:
-          ansible_host: 192.168.58.20
+          ansible_host: 192.168.121.20
         win10:
-          ansible_host: 192.168.58.40
+          ansible_host: 192.168.121.40
       vars:
         ansible_user: vagrant
         ansible_password: vagrant
@@ -17,4 +17,4 @@ all:
     linux:
       hosts:
         attacker:
-          ansible_host: 192.168.58.50
+          ansible_host: 192.168.121.50

@@ -27,6 +27,10 @@
           - DNS
         state: present
         include_management_tools: true
+      register: adds_install
+
+    - name: Reboot after AD DS install to ensure clean state
+      ansible.windows.win_reboot:
 
     - name: Promote DC and create forest
       microsoft.ad.domain:
@@ -57,7 +61,7 @@
       ansible.windows.win_dns_client:
         adapter_names: "*"
         ipv4_addresses:
-          - 192.168.58.10
+          - 192.168.121.10
 
     - name: Join domain
       microsoft.ad.membership:

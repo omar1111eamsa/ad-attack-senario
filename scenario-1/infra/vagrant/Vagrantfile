@@ -1,66 +1,89 @@
+# Force Libvirt provider
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+
 Vagrant.configure("2") do |config|
+  # === Global Configuration ===
   config.vm.box_check_update = false
-  config.vm.boot_timeout = 1200
-  config.winrm.retry_limit = 60
-  config.winrm.retry_delay = 10
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  NET = "192.168.58"
-  BOX_SERVER = "gusztavvargadr/windows-server-2019-standard"
-  BOX_WIN10 = "gusztavvargadr/windows-10-21h2-enterprise"
-  BOX_ATTACKER = "kalilinux/rolling"
+  # === Network Configuration ===
+  # Using 192.168.121.x to avoid conflict with VMware vmnet networks
+  NETWORK = "192.168.121"
+  
+  # === Box Configuration (Libvirt-compatible) ===
+  BOX_SERVER = "peru/windows-server-2019-standard-x64-eval"
+  BOX_WIN10 = "peru/windows-10-enterprise-x64-eval"
+  BOX_KALI = "kalilinux/rolling"
 
-  def win_vm(config, name, box, ip , mem, cpus=1)
+  # === Helper Method: Windows VM ===
+  def windows_vm(config, name, box, ip, memory, cpus=2)
     config.vm.define name do |node|
       node.vm.box = box
       node.vm.hostname = name
       node.vm.communicator = "winrm"
+      node.vm.boot_timeout = 1200
+      node.winrm.retry_limit = 60
+      node.winrm.retry_delay = 10
+      
+      # Private network with static IP (Libvirt auto-configures)
       node.vm.network "private_network", ip: ip
-      node.vm.provider "vmware_desktop" do |v|
-        v.vmx["memsize"] = mem.to_s
-        v.vmx["numvcpus"] = cpus.to_s
-        v.linked_clone = false
-        v.gui = true
+
+      node.vm.provider "libvirt" do |v|
+        v.memory = memory
+        v.cpus = cpus
+        
+        # Graphics configuration for GUI access
+        v.graphics_type = "spice"
+        v.video_type = "qxl"
+        v.channel :type => 'spicevmc', :target_name => 'com.redhat.spice.0', :target_type => 'virtio'
+        
+        # Input configuration (fixes mouse cursor sync)
+        v.input :type => "tablet", :bus => "usb"
+        
+        # Storage configuration
+        v.disk_bus = "sata"
+        v.nic_model_type = "e1000"
+        
+        # CPU configuration
+        v.cpu_mode = "host-passthrough"
       end
     end
   end
 
-  def linux_vm(config, name, box, ip, mem, cpus=1)
-    config.vm.define name do |node|
-      node.vm.box = box
-      node.vm.hostname = name
-      node.vm.network "private_network", ip: ip
-      node.vm.provider "vmware_desktop" do |v|
-        v.vmx["memsize"] = mem.to_s
-        v.vmx["numvcpus"] = cpus.to_s
-        v.linked_clone = false
-        v.gui = false
-      end
-    end
-  end
-
-  win_vm(config, "dc",        BOX_SERVER, "#{NET}.10", 2048, 1)
-  win_vm(config, "ca",        BOX_SERVER, "#{NET}.20", 2048, 1)
-  win_vm(config, "win10",     BOX_WIN10,  "#{NET}.40", 3072, 1)
+  # === VM Definitions ===
   
-  config.vm.define "attacker" do |attacker|
-    attacker.vm.box = BOX_ATTACKER
-    attacker.vm.hostname = "attacker"
-    attacker.vm.network "private_network", ip: "#{NET}.50"
-
-    attacker.vm.provider "vmware_desktop" do |v|
-      v.vmx["memsize"] = "2048"
-      v.vmx["numvcpus"] = "1"
-      v.linked_clone = false
-      v.gui = true
+  # Domain Controller
+  windows_vm(config, "dc", BOX_SERVER, "#{NETWORK}.10", 2048, 2)
+  
+  # Certificate Authority
+  windows_vm(config, "ca", BOX_SERVER, "#{NETWORK}.20", 2048, 2)
+  
+  # Windows 10 Client
+  windows_vm(config, "win10", BOX_WIN10, "#{NETWORK}.40", 3072, 2)
+  
+  # Kali Attacker (with Ansible provisioner)
+  config.vm.define "attacker" do |node|
+    node.vm.box = BOX_KALI
+    node.vm.hostname = "attacker"
+    node.vm.network "private_network", ip: "#{NETWORK}.50"
+    
+    node.vm.provider "libvirt" do |v|
+      v.memory = 2048
+      v.cpus = 2
+      v.graphics_type = "spice"
+      v.video_type = "qxl"
+      v.cpu_mode = "host-passthrough"
+      v.input :type => "tablet", :bus => "usb"
     end
-  end
 
-  # Host-side trigger: after the attacker is up, bootstrap Windows networking
-  # using forwarded WinRM ports, then run full Ansible provisioning.
-  config.trigger.after :up do |t|
-    t.only_on = ["attacker"]
-    t.info = "Bootstrapping Windows IPs and provisioning lab (host-side)"
-    t.run = { inline: "bash \"#{File.dirname(__FILE__)}/auto-provision.sh\"" }
+    # === Ansible Provisioner ===
+    # Runs after all VMs are up (industry standard pattern)
+    node.vm.provision "ansible" do |ansible|
+      ansible.limit = "all"
+      ansible.playbook = "../ansible/playbooks/site.yml"
+      ansible.inventory_path = "../ansible/inventory.yml"
+      ansible.config_file = "../ansible/ansible.cfg"
+      ansible.verbose = true
+    end
   end
 end

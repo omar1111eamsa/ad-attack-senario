@@ -52,3 +52,111 @@
       ansible.windows.win_shell: |
         & "C:\Windows\Temp\AcroRdrDCx64_2500120577.exe" /sAll /msi /norestart /quiet EULA_ACCEPT=YES DISABLEDESKTOPSHORTCUT=1 DISABLE_ARM_SERVICE_INSTALL=1 UPDATE_MODE=0
       when: acrobat_check.stdout is search("FOUND=false")
+
+    # --- Training artifact: benign PDF on Desktop + click/open telemetry (no payload) ---
+    - name: Ensure Public Desktop exists
+      ansible.windows.win_file:
+        path: C:\Users\Public\Desktop
+        state: directory
+
+    - name: Place training PDF on desktop (Invoice.pdf)
+      ansible.windows.win_get_url:
+        url: https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf
+        dest: C:\Users\Public\Desktop\Invoice.pdf
+        force: no
+
+    - name: Enable Security auditing for File System access (Success)
+      ansible.windows.win_shell: |
+        auditpol.exe /set /subcategory:"File System" /success:enable
+      changed_when: false
+
+    - name: Enable Security auditing for Handle Manipulation (Success)
+      ansible.windows.win_shell: |
+        auditpol.exe /set /subcategory:"Handle Manipulation" /success:enable
+      changed_when: false
+
+    - name: Set SACL on Invoice.pdf to log read/open access
+      ansible.windows.win_shell: |
+        $p = "C:\Users\Public\Desktop\Invoice.pdf"
+        if (!(Test-Path $p)) { throw "Missing $p" }
+        
+        $acl = Get-Acl $p -Audit
+        # Audit: Everyone, ReadAndExecute, Success
+        $auditRule = New-Object System.Security.AccessControl.FileSystemAuditRule("Everyone", "ReadAndExecute", "Success")
+        $acl.SetAuditRule($auditRule)
+        Set-Acl $p $acl
+      changed_when: false
+
+    - name: Drop helper script to check whether Invoice.pdf was opened
+      ansible.windows.win_copy:
+        dest: C:\Users\Public\Desktop\Check-InvoiceClick.ps1
+        content: |
+          $ErrorActionPreference = "Stop"
+          $path = "C:\Users\Public\Desktop\Invoice.pdf"
+          if (!(Test-Path $path)) { throw "Missing $path" }
+
+          Write-Host "Checking Security log for file access events on: $path"
+          Write-Host "Tip: open Invoice.pdf first, then re-run this script."
+
+          $since = (Get-Date).AddHours(-24)
+          $events = Get-WinEvent -FilterHashtable @{ LogName='Security'; Id=4663; StartTime=$since } -ErrorAction SilentlyContinue
+          if (-not $events) {
+            Write-Host "No 4663 events found in last 24h (auditing may be disabled or log cleared)." -ForegroundColor Yellow
+            exit 2
+          }
+
+          $match = $events | Where-Object { $_.Message -like "*$path*" } | Select-Object -First 1
+          if ($match) {
+            Write-Host "FOUND: Invoice.pdf was accessed/opened." -ForegroundColor Green
+            Write-Host ("TimeCreated: {0}" -f $match.TimeCreated)
+            exit 0
+          } else {
+            Write-Host "NOT FOUND: No access events for Invoice.pdf yet." -ForegroundColor Yellow
+            exit 1
+          }
+
+    # --- Provisioning validations ("tests") ---
+    - name: Stat Invoice.pdf
+      ansible.windows.win_stat:
+        path: C:\Users\Public\Desktop\Invoice.pdf
+      register: invoice_pdf
+
+    - name: Stat Check-InvoiceClick.ps1
+      ansible.windows.win_stat:
+        path: C:\Users\Public\Desktop\Check-InvoiceClick.ps1
+      register: invoice_checker
+
+    - name: Assert training desktop artifacts exist
+      ansible.builtin.assert:
+        that:
+          - invoice_pdf.stat.exists
+          - invoice_checker.stat.exists
+        fail_msg: "Training artifacts missing on Win10 desktop (expected Invoice.pdf + Check-InvoiceClick.ps1)."
+
+    - name: Verify audit subcategories are enabled
+      ansible.windows.win_shell: |
+        auditpol.exe /get /subcategory:"File System"
+        auditpol.exe /get /subcategory:"Handle Manipulation"
+      register: auditpol_get
+      changed_when: false
+
+    - name: Assert auditing is enabled (Success)
+      ansible.builtin.assert:
+        that:
+          - auditpol_get.stdout is search("File System")
+          - auditpol_get.stdout is search("Success")
+          - auditpol_get.stdout is search("Handle Manipulation")
+        fail_msg: "Expected Windows auditing to be enabled for File System + Handle Manipulation (Success)."
+
+    - name: Verify SACL exists on Invoice.pdf
+      ansible.windows.win_shell: |
+        icacls.exe "C:\Users\Public\Desktop\Invoice.pdf"
+      register: icacls_invoice
+      changed_when: false
+
+    - name: Assert Invoice.pdf has an audit entry
+      ansible.builtin.assert:
+        that:
+          # icacls prints an audit section when SACL is present; text varies but includes "AUDIT" in many builds.
+          - icacls_invoice.stdout is search("Audit", ignorecase=True) or icacls_invoice.stdout is search("S:", ignorecase=True)
+        fail_msg: "Invoice.pdf does not appear to have a SACL/audit entry (icacls output did not indicate auditing)."

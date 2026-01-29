@@ -12,40 +12,32 @@ Before starting, ensure you have the following installed on your host:
 
 ### Required Software
 
-1. **VMware Workstation/Desktop** (16.0 or later)
+1. **Libvirt/KVM** (native Linux virtualization)
    ```bash
    # Ubuntu/Debian
-   # Download from VMware website or use:
-   sudo apt-get install vmware-workstation
-   
-   # macOS
-   # Download VMware Fusion from VMware website
+   sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
+   sudo usermod -aG libvirt,kvm $USER
+   newgrp libvirt
    ```
 
-2. **Vagrant** (2.3.0 or later) with VMware plugin
+2. **Vagrant** (2.3.0+) with Libvirt plugin
    ```bash
    # Install Vagrant
-   sudo apt-get install vagrant  # Ubuntu/Debian
-   brew install vagrant          # macOS
+   sudo apt install vagrant
+
+   # Install dependencies for vagrant-libvirt
+   sudo apt install libvirt-dev
    
-   # Install VMware Vagrant plugin
-   vagrant plugin install vagrant-vmware-desktop
+   # Install vagrant-libvirt plugin
+   vagrant plugin install vagrant-libvirt
    ```
 
-3. **Ansible** (2.10 or later)
+3. **Ansible** (2.10+)
    ```bash
    # Ubuntu/Debian
-   sudo apt-get install ansible
+   sudo apt install ansible
    
-   # macOS (using Homebrew)
-   brew install ansible
-   
-   # Or using pip
-   pip3 install ansible
-   ```
-
-4. **Python winrm** (for Ansible Windows support)
-   ```bash
+   # Python WinRM for Windows management
    pip3 install pywinrm
    ```
 
@@ -77,7 +69,8 @@ vagrant up
 ```
 
 **This single command will:**
-- Create 4 VMs (DC, CA, Win10, Kali Attacker)
+- Create 4 VMs (DC, CA, Win10, Kali Attacker) with Libvirt/KVM
+- Auto-configure network IPs (no manual setup needed!)
 - Install Windows Server with Active Directory
 - Configure Certificate Authority
 - Create ESC1 vulnerable template
@@ -87,35 +80,19 @@ vagrant up
 
 **⏱️ First run takes 30-60 minutes** depending on your internet speed and hardware.
 
-### 3b. VMware note (Windows networking)
-
-VMware often does **not** auto-configure the private NIC IPs on Windows guests. This repo handles that automatically during `vagrant up`:
-
-- The `Vagrantfile` runs a **host-side trigger** after the `attacker` VM is up.
-- That trigger executes `scenario-1/infra/vagrant/auto-provision.sh`, which:
-  - **Bootstraps Windows private IPs** via WinRM port-forwarding (no manual IP config needed)
-  - Runs the full Ansible `playbooks/site.yml`
-
-If you need to re-run provisioning manually:
-
-```bash
-cd scenario-1/infra/vagrant
-./auto-provision.sh
-```
-
 ### 4. Wait for Provisioning
 
-The setup is fully automated. You'll see Ansible playbooks running automatically. Wait until you see:
+The setup is fully automated. Vagrant will provision all VMs using Ansible. Wait until you see:
 
 ```
-==> attacker: Running action triggers after up ...
-==> attacker: Bootstrapping Windows IPs and provisioning lab (host-side)
-==> [auto] --- Phase 1: Bootstrap Windows private-network IPs (DC, CA, Win10) ---
-==> [auto] --- Phase 2: Full lab provisioning (site.yml) ---
+==> attacker: Running provisioner: ansible...
+PLAY [Verify network configuration on Windows hosts] ****************************
 ...
 PLAY RECAP *********************************************************************
 dc                         : ok=XX    changed=XX    ...
 ca                         : ok=XX    changed=XX    ...
+win10                      : ok=XX    changed=XX    ...
+attacker                   : ok=XX    changed=XX    ...
 ```
 
 ## 🎓 Exploiting ESC1
@@ -216,19 +193,23 @@ vagrant ssh win10    # Windows 10 client
 vagrant ssh attacker # Kali attacker
 ```
 
-**VMware GUI:** This lab is configured to **show the VM windows** in VMware (`v.gui = true`). If you want headless mode, set `v.gui = false` in `scenario-1/infra/vagrant/Vagrantfile`.
+**VM Access:** All VMs have graphical consoles via `virt-manager` or `virt-viewer`. To connect:
+```bash
+# Open graphical manager
+virt-manager
+
+# Or connect to specific VM
+virt-viewer dc
+```
 
 ### Re-run Provisioning
 
 If you need to re-run the Ansible setup:
 
 ```bash
-# Re-run bootstrap + provisioning (recommended)
 cd scenario-1/infra/vagrant
-./auto-provision.sh
+vagrant provision
 ```
-
-Note: this repo uses a **host-side trigger** during `vagrant up` (not a guest provisioner). `vagrant provision` alone may do nothing unless you run `./auto-provision.sh`.
 
 ## 🧪 Manual Ansible Execution
 
@@ -271,34 +252,24 @@ vmrun list
 vagrant status
 ```
 
-### VMware Network Configuration Issue
+### Libvirt Network Issues
 
-VMware often cannot auto-configure secondary network adapters on Windows VMs.
-
-This repo now auto-bootstraps Windows IPs during `vagrant up` via `auto-provision.sh`.
-
-If you still need to fix a Windows VM manually, open PowerShell as Administrator and run (example for DC):
-
-```powershell
-# DC: 192.168.58.10
-$adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -Last 1
-New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress 192.168.58.10 -PrefixLength 24
-Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses 192.168.58.10
-
-# CA: Change IP to 192.168.58.20
-# Win10: Change IP to 192.168.58.40
-```
-
-Alternatively, use the provided scripts in `scenario-1/scripts/configure-network-*.ps1`.
-
-After configuring networks, re-run:
-
+**VMs not getting IPs:**
 ```bash
-cd scenario-1/infra/vagrant
-./auto-provision.sh
+# Check libvirt default network
+sudo virsh net-list
+sudo virsh net-start vagrant-libvirt  # if not running
+
+# Check VM network interfaces
+vagrant ssh dc -c "ipconfig"
 ```
 
-**Provisioning order:** `00-network.yml` runs first (static IPs + DNS on Windows). If Ansible cannot reach a Windows host, fix networking and then re-run `./auto-provision.sh`.
+**Cannot ping between VMs:**
+```bash
+# From attacker VM
+vagrant ssh attacker
+ping 192.168.58.10  # Should reach DC
+```
 
 ### Ansible Connection Errors
 

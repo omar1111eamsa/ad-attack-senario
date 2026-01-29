@@ -8,3 +8,4 @@
 - import_playbook: 05-win10-software.yml
 - import_playbook: 06-esc1-template.yml
 - import_playbook: 07-test-user.yml
+- import_playbook: 99-fix-enroll-permission.yml

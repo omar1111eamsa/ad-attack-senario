@@ -3,12 +3,12 @@
   hosts: dc
   gather_facts: no
   vars:
-    ansible_user: "SERINI\\Administrator"
-    ansible_password: "P@ssw0rd123!"
-    ansible_connection: winrm
-    ansible_port: 5985
-    ansible_winrm_transport: ntlm
-    ansible_winrm_server_cert_validation: ignore
+    domain_user: "SERINI\\Administrator"
+    domain_password: "P@ssw0rd123!"
+    ansible_become_password: "{{ domain_password }}"
+  become: yes
+  become_method: runas
+  become_user: "{{ domain_user }}"
   tasks:
     - name: Upload template script
       ansible.windows.win_copy:
