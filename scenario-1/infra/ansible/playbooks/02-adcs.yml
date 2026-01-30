@@ -32,7 +32,11 @@
       args:
         executable: powershell.exe
       register: ca_config
-      failed_when: "'already installed' not in ca_config.stderr"
+      failed_when: 
+        - ca_config.rc != 0
+        - "'already installed' not in ca_config.stderr"
+        - "'The certification authority is already installed' not in ca_config.stdout"
+
       become: yes
       become_method: runas
       become_user: "{{ domain_user }}"
