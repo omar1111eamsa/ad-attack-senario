@@ -49,6 +49,10 @@
       ansible.windows.win_reboot:
       when: domain_create.reboot_required
 
+    - name: Disable Windows Firewall to permit RPC/ADCS attacks
+      ansible.windows.win_shell: Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+
+
 - name: Join member servers and workstation to domain
   hosts: ca,win10
   gather_facts: no
