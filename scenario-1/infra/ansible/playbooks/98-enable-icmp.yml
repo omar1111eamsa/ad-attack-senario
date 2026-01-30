@@ -9,8 +9,8 @@
     ansible_winrm_server_cert_validation: ignore
     ansible_become: yes
     ansible_become_method: runas
-    ansible_become_user: "SERINI\\Administrator"
-    ansible_become_password: "P@ssw0rd123!"
+    ansible_become_user: System
+
 
   tasks:
     - name: Allow ICMPv4-In Firewall Rule
