@@ -157,27 +157,32 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 
 ```
 .
-├── scenario-1/
-│   ├── docs/
-│   │   └── attack-guide.md           # Detailed attack walkthrough
-│   ├── infra/
-│   │   ├── ansible/
-│   │   │   ├── playbooks/
-│   │   │   │   ├── site.yml          # Master playbook
-│   │   │   │   ├── 00-network.yml    # Network setup
-│   │   │   │   ├── 00-bootstrap-network-forwarded.yml # Bootstrap IPs via forwarded WinRM
-│   │   │   │   ├── 01-domain.yml     # AD Domain setup
-│   │   │   │   ├── 02-adcs.yml       # Certificate Authority
-│   │   │   │   ├── 06-esc1-template.yml  # Vulnerable template
-│   │   │   │   └── 08-ldaps-config.yml   # LDAPS configuration
-│   │   │   ├── inventory.yml
-│   │   │   └── ansible.cfg
-│   │   └── vagrant/
-│   │       └── Vagrantfile            # VM definitions
-│   └── scripts/
-│       ├── 01-create-vulnerable-template.ps1
-│       └── 02-create-test-user.ps1
-└── README.md
+├── scenario.txt / scenario.pdf       # The training brief (3 scenarios)
+├── README.md
+└── scenario-1/
+    ├── docs/
+    │   ├── attack-guide.md            # Step-by-step exploitation walkthrough
+    │   └── ad-esc1-lab.tex            # Technical report (infra-focused)
+    ├── infra/
+    │   ├── ansible/
+    │   │   ├── ansible.cfg
+    │   │   ├── inventory.yml          # Hosts only (WinRM + SSH)
+    │   │   ├── group_vars/
+    │   │   │   ├── all/               # vars.yml (data) + vault.yml (secret)
+    │   │   │   ├── windows.yml        # WinRM connection settings
+    │   │   │   └── linux.yml          # SSH connection settings
+    │   │   └── playbooks/
+    │   │       ├── site.yml           # Ordered master pipeline
+    │   │       ├── 00-network.yml     01-domain.yml   02-adcs.yml
+    │   │       ├── 03-software-gpo.yml 04-kali-tools.yml 05-win10-software.yml
+    │   │       ├── 06-esc1-template.yml 07-test-user.yml 08-ldaps-config.yml
+    │   │       └── 98-enable-icmp.yml  99-fix-enroll-permission.yml
+    │   └── vagrant/
+    │       └── Vagrantfile            # 4-VM libvirt definitions + provisioner
+    └── scripts/
+        ├── 01-create-vulnerable-template.ps1   # ESC1 template injector
+        ├── 02-create-test-user.ps1             # jdoe
+        └── 08-persistence-dcsync-account.ps1   # post-exploit persistence
 ```
 
 ## 🔧 Useful Commands

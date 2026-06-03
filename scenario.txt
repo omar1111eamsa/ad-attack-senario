@@ -1,0 +1,165 @@
+#SCÉNARIO 1: “Silent PDF Initial Access ->
+AD-CS Abuse-> DC Persistence”
+Description : An attacker gains entry through a malicious PDF bypassing Defender, escalates
+via AD-CS (ESC1), compromises domain admin privileges and persists stealthily.
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Weaponization
+- Objective: prepare and deliver a payload bypassing Defender
+- Example: Create a non-macro PDF with a JavaScript-based payload → downloads an AMSIobfuscated stager.
+Exploitation
+- Objective: execute without triggering Defender
+- Example: Payload triggers AmsiPatch-less PowerShell download cradle using reflection
+assembly loading.
+Installation
+- Objective: Establish stealthy foothold
+- Example:
+o Execute an in-memory C# beacon using execute-assembly technique.
+o Persistence via:
+▪ GPO logon script misconfiguration (attacker-controlled share)
+▪ Or registry Run key with AMSI-obfuscated command.
+Command & Control:
+- Objective: covert C2
+- Example:
+o Use named pipes or SMB C2
+o DNS over HTTPS to internal proxy.
+Lateral Movement:
+- Objective: Reach AD-CS
+- Example:
+o Dump DPAPI/LSA/SAM machine creds (through reg export / backup for example)
+o Attempt Kerberoasting
+o Identify vulnerable certificate template (ESC1)
+Privilege Escalation:
+- Objective: Domain Admin via AD-CS
+- Example:
+o Request certificate with ClientAuth template
+o Perform S4U2Self → S4U2Proxy to impersonate a Domain Admin
+o Get a usable TGT for DA.
+Persistence:
+- Objective: Stealthy persistence on DC
+- Example:
+
+
+
+o
+o
+
+Upload malicious CA certificate (golden certificate persistence)
+Or create a DCSync-capable account with no admin rights (special ACE abuse)
+
+#SCÉNARIO 2: “Backup Operators-> GPO
+Abuse -> Full Domain Control”
+Description : Attacker compromises a workstation, discovers misconfigured Backup
+Operators membership (Use Backup Operators privilege to read SAM & SYSTEM, Extract local
+admin hash, Use Backup Operators privilege to read SAM & SYSTEM. Extract local admin hash,
+Perform Pass-the-Hash to File Server / DC (where allowed) Use diskshadow to create VSS copy of
+system volume, Copy NTDS.dit + SYSTEM hive -> build attacker TGT .Gain Domain Admin.), abuses
+it to gain local SYSTEM, elevates to Domain Admin, and abuses GPO to persist (Modify GPO to
+deploy: Admin user with random name, Startup script pulling commands from hidden share)
+
+#SCÉNARIO 3: “Shadow Credentials->
+AdminSDHolder Abuse-> Undetectable
+Persistence”
+Reconnaissance: Identify writable ACLs
+-
+
+Objective: Find “stealth” privilege paths
+Example: Bloodhound or manual ADSI queries
+
+2. Weaponization: Create key pair
+-
+
+Objective: Add shadow credential
+Example: Add alternateSecurityIdentities attribute
+
+3. Delivery: Inject credential into AD
+-
+
+Objective: No alerts from Defender
+Example: LDAPS modification
+
+4. Exploitation: Request TGT using new key
+-
+
+Objective: Authenticate as privileged user
+Example: PKINIT via shadow private key
+
+5. Installation: Hijack AdminSDHolder
+-
+
+Objective: Become permanent admin
+Example: Modify admin ACL inheritance on target user
+
+
+
+6. C2: Kerberos-only C2
+-
+
+Objective: No network beaconing
+Example: Use TGS requests as covert channel
+
+7. Lateral Movement: Access DC shares
+-
+
+Objective: Expand compromise
+Example: \\DC\C$ browsing using privileged TGT
+
+8. Privilege Escalation: Full Domain Admin
+-
+
+Objective: ACL propagation to all admin accounts
+Example: Wait for AdminSDHolder hourly overwrite
+
+LAB IDEAS
+Attacker VM
+Win10 Workstation (Victim #1)
+Win11 Workstation (Victim #2)
+Windows Server 2019 (DC)
+Windows Server 2019 (AD-CS)
+Windows Server 2019 (File Server)
+SIEM
+
+AD-DS, DNS, DHCP
+Certificate Authority (Enterprise CA)
+Record all events for mapping after the attack
+scenarios have ended
+
+To make scenarios more realistic you can enable security measure and add voluntary
+Misconfigurations (for realism):
+-
+
+Windows Defender
+SmartScreen ON
+AMSI ON
+PowerShell Constrained Language Mode (Workstation #2)
+Firewall ON
+UAC enabled
+AD-CS vulnerable template: ESC1 (Client Authentication + ENROLLEE_SUPPLIES_SUBJECT)
+GPO that assigns local admin rights to a security group incorrectly
+Backup Operators group contains a low-privileged user
+SMB signing disabled on File Server
+NTLM still enabled
+No certificate revocation checking
+
+Additionally, you may include a vulnerable web application exposing flaws such as RCE or RFI,
+allowing you to simulate realistic initial access and you can seamlessly chain techniques from the
+various scenarios into a complete end‑to‑end intrusion flow.
+Good Luck
+
+!!
+
+
+
+

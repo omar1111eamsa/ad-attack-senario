@@ -60,8 +60,8 @@ scenario-1/docs/SCENARIO1_FULL_ATTACK.md
 *_Certipy.txt
 *_Certipy.json
 # LaTeX build artifacts (compile ad-esc1-lab.tex locally)
-docs/*.aux
-docs/*.log
-docs/*.out
-docs/*.toc
-docs/ad-esc1-lab.pdf
+scenario-1/docs/*.aux
+scenario-1/docs/*.log
+scenario-1/docs/*.out
+scenario-1/docs/*.toc
+scenario-1/docs/ad-esc1-lab.pdf
