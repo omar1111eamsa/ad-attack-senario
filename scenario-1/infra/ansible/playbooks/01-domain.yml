@@ -15,10 +15,6 @@
 - name: Build domain on DC
   hosts: dc
   gather_facts: no
-  vars:
-    domain_name: "serini.lab"
-    domain_netbios: "SERINI"
-    safe_mode_password: "P@ssw0rd123!"
   tasks:
     - name: Install AD DS + DNS
       ansible.windows.win_feature:
@@ -40,36 +36,58 @@
       register: domain_create
 
     - name: Set domain Administrator password to expected value
-      ansible.windows.win_shell: net user Administrator "{{ safe_mode_password }}"
+      ansible.windows.win_shell: net user Administrator "{{ domain_password }}"
       when: domain_create is succeeded
+      changed_when: false
 
     - name: Reboot after domain creation
       ansible.windows.win_reboot:
       when: domain_create.reboot_required
 
-    - name: Disable Windows Firewall to permit RPC/ADCS attacks
-      ansible.windows.win_shell: Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
-
+    # Keep the Windows firewall ENABLED (realistic) and open only the ports the
+    # AD / AD CS / DCSync attack paths require, rather than disabling it wholesale.
+    - name: Allow required AD/ADCS ports through the DC firewall
+      ansible.windows.win_shell: |
+        $created = 0
+        $rules = @(
+          @{ N='AD-DNS-TCP';   P=53 },   @{ N='AD-Kerberos';  P=88 },
+          @{ N='AD-RPC-EPM';   P=135 },  @{ N='AD-NetBIOS';   P=139 },
+          @{ N='AD-LDAP';      P=389 },  @{ N='AD-SMB';       P=445 },
+          @{ N='AD-Kpasswd';   P=464 },  @{ N='AD-LDAPS';     P=636 },
+          @{ N='AD-GC';        P=3268 }, @{ N='AD-GCS';       P=3269 }
+        )
+        foreach ($r in $rules) {
+          if (-not (Get-NetFirewallRule -DisplayName $r.N -ErrorAction SilentlyContinue)) {
+            New-NetFirewallRule -DisplayName $r.N -Direction Inbound -Protocol TCP -LocalPort $r.P -Action Allow | Out-Null
+            $created++
+          }
+        }
+        # Dynamic RPC range (needed for DRSUAPI / DCSync against the DC)
+        if (-not (Get-NetFirewallRule -DisplayName 'AD-RPC-Dynamic' -ErrorAction SilentlyContinue)) {
+          New-NetFirewallRule -DisplayName 'AD-RPC-Dynamic' -Direction Inbound -Protocol TCP -LocalPort RPC -Action Allow | Out-Null
+          $created++
+        }
+        if ($created -gt 0) { Write-Host "CREATED $created" }
+      args:
+        executable: powershell.exe
+      register: dc_fw
+      changed_when: "'CREATED' in dc_fw.stdout"
 
 - name: Join member servers and workstation to domain
   hosts: ca,win10
   gather_facts: no
-  vars:
-    domain_name: "serini.lab"
-    domain_admin_user: "SERINI\\Administrator"
-    domain_admin_password: "P@ssw0rd123!"
   tasks:
     - name: Set DNS to DC
       ansible.windows.win_dns_client:
         adapter_names: "*"
         ipv4_addresses:
-          - 192.168.121.10
+          - "{{ dc_ip }}"
 
     - name: Join domain
       microsoft.ad.membership:
         dns_domain_name: "{{ domain_name }}"
-        domain_admin_user: "{{ domain_admin_user }}"
-        domain_admin_password: "{{ domain_admin_password }}"
+        domain_admin_user: "{{ domain_user }}"
+        domain_admin_password: "{{ domain_password }}"
         state: domain
       register: domain_join
 

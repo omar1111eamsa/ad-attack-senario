@@ -2,17 +2,9 @@
 - name: Install user software on Win10
   hosts: win10
   gather_facts: no
-  vars:
-    ansible_user: "vagrant"
-    ansible_password: "vagrant"
-    ansible_connection: winrm
-    ansible_port: 5985
-    ansible_winrm_transport: ntlm
-    ansible_winrm_server_cert_validation: ignore
-    ansible_become: yes
-    ansible_become_method: runas
-    ansible_become_user: "SERINI\\Administrator"
-    ansible_become_password: "P@ssw0rd123!"
+  become: yes
+  become_method: runas
+  become_user: "{{ domain_user }}"
   tasks:
     - name: Check for Chocolatey
       ansible.windows.win_stat:

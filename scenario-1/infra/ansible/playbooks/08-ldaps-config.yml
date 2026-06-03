@@ -5,10 +5,6 @@
 - name: Configure LDAPS on Domain Controller
   hosts: dc
   gather_facts: no
-  vars:
-    domain_user: "SERINI\\Administrator"
-    domain_password: "P@ssw0rd123!"
-    ansible_become_password: "{{ domain_password }}"
   become: yes
   become_method: runas
   become_user: "{{ domain_user }}"

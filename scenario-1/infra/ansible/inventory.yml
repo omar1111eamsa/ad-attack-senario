@@ -1,3 +1,6 @@
+---
+# Hosts only. Connection settings live in group_vars/windows.yml and
+# group_vars/linux.yml; shared data/secrets live in group_vars/all/.
 all:
   children:
     windows:
@@ -8,12 +11,6 @@ all:
           ansible_host: 192.168.121.20
         win10:
           ansible_host: 192.168.121.40
-      vars:
-        ansible_user: vagrant
-        ansible_password: vagrant
-        ansible_connection: winrm
-        ansible_winrm_transport: ntlm
-        ansible_winrm_server_cert_validation: ignore
     linux:
       hosts:
         attacker:

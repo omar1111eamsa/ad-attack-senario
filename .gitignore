@@ -42,6 +42,10 @@ Thumbs.db
 administrator.pfx
 administrator.ccache
 
+# Ansible Vault password (never commit; each operator supplies their own)
+.vault_pass
+**/.vault_pass
+
 # Temporary Files
 *.tmp
 *.temp

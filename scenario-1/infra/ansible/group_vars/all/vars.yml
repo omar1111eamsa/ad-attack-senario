@@ -1,0 +1,24 @@
+---
+# =============================================================================
+#  Lab-wide configuration -- single source of truth for every playbook.
+#  Non-secret values live here; secrets are pulled from the encrypted vault.yml
+#  (see vault_* references below). Change a value once, here, and it propagates
+#  to all playbooks and to the Kali /etc/hosts seed.
+# =============================================================================
+
+# --- Domain identity ---------------------------------------------------------
+domain_name: serini.lab
+domain_netbios: SERINI
+ca_common_name: SERINI-CA
+
+# --- Network (isolated libvirt host-only subnet) -----------------------------
+lab_network: "192.168.121"
+dc_ip:       "{{ lab_network }}.10"
+ca_ip:       "{{ lab_network }}.20"
+win10_ip:    "{{ lab_network }}.40"
+attacker_ip: "{{ lab_network }}.50"
+
+# --- Privileged identity used by the Windows playbooks (runas) ---------------
+domain_user:        "{{ domain_netbios }}\\Administrator"
+domain_password:    "{{ vault_domain_password }}"     # from group_vars/all/vault.yml
+safe_mode_password: "{{ domain_password }}"

@@ -1,18 +1,15 @@
 - name: Enable ICMP (Ping) on Windows hosts
   hosts: windows
   gather_facts: no
-  vars:
-    ansible_user: "vagrant"
-    ansible_password: "vagrant"
-    ansible_connection: winrm
-    ansible_winrm_transport: ntlm
-    ansible_winrm_server_cert_validation: ignore
-    ansible_become: yes
-    ansible_become_method: runas
-    ansible_become_user: System
-
-
+  become: yes
+  become_method: runas
+  become_user: System
   tasks:
     - name: Allow ICMPv4-In Firewall Rule
       ansible.windows.win_shell: |
-        New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Protocol ICMPv4 -IcmpType 8 -Enabled True -Profile Any -Action Allow -ErrorAction SilentlyContinue
+        if (-not (Get-NetFirewallRule -DisplayName "Allow ICMPv4-In" -ErrorAction SilentlyContinue)) {
+          New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Protocol ICMPv4 -IcmpType 8 -Enabled True -Profile Any -Action Allow | Out-Null
+          Write-Host "CREATED"
+        }
+      register: icmp_rule
+      changed_when: "'CREATED' in icmp_rule.stdout"

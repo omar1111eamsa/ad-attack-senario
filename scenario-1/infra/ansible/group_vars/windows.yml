@@ -1,6 +1,13 @@
+---
+# Connection settings for all Windows hosts (WinRM).
+# WinRM creds are the Vagrant defaults (not secret); the domain password used
+# for runas elevation comes from the vault via domain_password (group_vars/all).
 ansible_user: vagrant
 ansible_password: vagrant
 ansible_connection: winrm
 ansible_port: 5985
 ansible_winrm_transport: ntlm
 ansible_winrm_server_cert_validation: ignore
+
+# Used whenever a play/task elevates with become_method: runas
+ansible_become_password: "{{ domain_password }}"

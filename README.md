@@ -56,13 +56,24 @@ git clone https://github.com/omar1111eamsa/ad-attack-senario.git
 cd ad-attack-senario
 ```
 
-### 2. Navigate to Vagrant Directory
+### 2. Provide the Ansible Vault password
+
+The domain secrets live in an **Ansible Vault** (`group_vars/all/vault.yml`).
+The vault password is **not** committed — create the password file once so
+provisioning can decrypt unattended (the lab vault password is `vagrant`):
+
+```bash
+echo 'vagrant' > scenario-1/infra/ansible/.vault_pass
+chmod 600 scenario-1/infra/ansible/.vault_pass
+```
+
+### 3. Navigate to Vagrant Directory
 
 ```bash
 cd scenario-1/infra/vagrant
 ```
 
-### 3. Start the Environment
+### 4. Start the Environment
 
 ```bash
 vagrant up
@@ -80,7 +91,7 @@ vagrant up
 
 **⏱️ First run takes 30-60 minutes** depending on your internet speed and hardware.
 
-### 4. Wait for Provisioning
+### 5. Wait for Provisioning
 
 The setup is fully automated. Vagrant will provision all VMs using Ansible. Wait until you see:
 
