@@ -7,7 +7,7 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
   # === Network Configuration ===
-  # Using 192.168.121.x to avoid conflict with VMware vmnet networks
+  # Isolated host-only lab network managed by libvirt
   NETWORK = "192.168.121"
   
   # === Box Configuration (Libvirt-compatible) ===

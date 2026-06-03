@@ -245,8 +245,8 @@ ansible-playbook -i inventory.yml playbooks/06-esc1-template.yml
 ### VMs Not Starting
 
 ```bash
-# Check VMware VMs
-vmrun list
+# Check running libvirt domains
+sudo virsh list --all
 
 # Or use Vagrant status
 vagrant status
