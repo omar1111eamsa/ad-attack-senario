@@ -37,20 +37,12 @@
       become_method: runas
       become_user: "{{ domain_user }}"
 
-    - name: Configure CA Firewall Rules
+    - name: Trust the isolated lab subnet on the CA firewall
       ansible.windows.win_shell: |
-        $created = 0
-        $rules = @(
-          @{ N='HTTP'; P=80 }, @{ N='HTTPS'; P=443 },
-          @{ N='RPC';  P=135 }, @{ N='SMB';  P=445 }
-        )
-        foreach ($r in $rules) {
-          if (-not (Get-NetFirewallRule -DisplayName $r.N -ErrorAction SilentlyContinue)) {
-            New-NetFirewallRule -DisplayName $r.N -Direction Inbound -Protocol TCP -LocalPort $r.P -Action Allow | Out-Null
-            $created++
-          }
+        if (-not (Get-NetFirewallRule -DisplayName 'Lab-Allow-Subnet' -ErrorAction SilentlyContinue)) {
+          New-NetFirewallRule -DisplayName 'Lab-Allow-Subnet' -Direction Inbound -Action Allow -RemoteAddress {{ lab_network }}.0/24 | Out-Null
+          Write-Host 'CREATED'
         }
-        if ($created -gt 0) { Write-Host "CREATED $created" }
       args:
         executable: powershell.exe
       register: ca_fw

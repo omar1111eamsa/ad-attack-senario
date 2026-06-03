@@ -12,7 +12,7 @@ domain_netbios: SERINI
 ca_common_name: SERINI-CA
 
 # --- Network (isolated libvirt host-only subnet) -----------------------------
-lab_network: "192.168.121"
+lab_network: "192.168.56"
 dc_ip:       "{{ lab_network }}.10"
 ca_ip:       "{{ lab_network }}.20"
 win10_ip:    "{{ lab_network }}.40"

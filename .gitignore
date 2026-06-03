@@ -59,3 +59,9 @@ scenario-1/docs/SCENARIO1_FULL_ATTACK.md
 # Certipy outputs (generated during lab runs)
 *_Certipy.txt
 *_Certipy.json
+# LaTeX build artifacts (compile ad-esc1-lab.tex locally)
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/ad-esc1-lab.pdf

@@ -44,30 +44,15 @@
       ansible.windows.win_reboot:
       when: domain_create.reboot_required
 
-    # Keep the Windows firewall ENABLED (realistic) and open only the ports the
-    # AD / AD CS / DCSync attack paths require, rather than disabling it wholesale.
-    - name: Allow required AD/ADCS ports through the DC firewall
+    # Keep the Windows firewall ENABLED (realistic) but trust the isolated lab
+    # subnet, so all AD/AD CS/DCSync traffic (TCP, UDP for DNS/Kerberos, and ICMP)
+    # flows between lab hosts while everything else stays blocked.
+    - name: Trust the isolated lab subnet on the DC firewall
       ansible.windows.win_shell: |
-        $created = 0
-        $rules = @(
-          @{ N='AD-DNS-TCP';   P=53 },   @{ N='AD-Kerberos';  P=88 },
-          @{ N='AD-RPC-EPM';   P=135 },  @{ N='AD-NetBIOS';   P=139 },
-          @{ N='AD-LDAP';      P=389 },  @{ N='AD-SMB';       P=445 },
-          @{ N='AD-Kpasswd';   P=464 },  @{ N='AD-LDAPS';     P=636 },
-          @{ N='AD-GC';        P=3268 }, @{ N='AD-GCS';       P=3269 }
-        )
-        foreach ($r in $rules) {
-          if (-not (Get-NetFirewallRule -DisplayName $r.N -ErrorAction SilentlyContinue)) {
-            New-NetFirewallRule -DisplayName $r.N -Direction Inbound -Protocol TCP -LocalPort $r.P -Action Allow | Out-Null
-            $created++
-          }
+        if (-not (Get-NetFirewallRule -DisplayName 'Lab-Allow-Subnet' -ErrorAction SilentlyContinue)) {
+          New-NetFirewallRule -DisplayName 'Lab-Allow-Subnet' -Direction Inbound -Action Allow -RemoteAddress {{ lab_network }}.0/24 | Out-Null
+          Write-Host 'CREATED'
         }
-        # Dynamic RPC range (needed for DRSUAPI / DCSync against the DC)
-        if (-not (Get-NetFirewallRule -DisplayName 'AD-RPC-Dynamic' -ErrorAction SilentlyContinue)) {
-          New-NetFirewallRule -DisplayName 'AD-RPC-Dynamic' -Direction Inbound -Protocol TCP -LocalPort RPC -Action Allow | Out-Null
-          $created++
-        }
-        if ($created -gt 0) { Write-Host "CREATED $created" }
       args:
         executable: powershell.exe
       register: dc_fw
