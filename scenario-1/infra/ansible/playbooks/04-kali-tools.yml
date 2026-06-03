@@ -57,7 +57,7 @@
         line: "{{ item.line }}"
         create: true
       loop:
-        - { line: "192.168.58.10  dc.serini.lab dc serini.lab" }
-        - { line: "192.168.58.20  ca.serini.lab ca" }
+        - { line: "192.168.121.10  dc.serini.lab dc serini.lab" }
+        - { line: "192.168.121.20  ca.serini.lab ca" }
       loop_control:
         label: "{{ item.line }}"
