@@ -15,15 +15,24 @@
       ansible.windows.win_shell: |
         powershell.exe -ExecutionPolicy Bypass -File C:\Windows\Temp\01-create-vulnerable-template.ps1
 
+    # Retry: right after CA install the enrollment object may not be registered
+    # in AD yet, in which case the template would silently fail to publish.
     - name: Publish template on CA in AD
       ansible.windows.win_shell: |
         Import-Module ActiveDirectory
         $configNC = (Get-ADRootDSE).configurationNamingContext
         $enrollPath = "CN=Enrollment Services,CN=Public Key Services,CN=Services,$configNC"
-        $ca = Get-ADObject -SearchBase $enrollPath -LDAPFilter "(cn=SERINI-CA)" -Properties certificateTemplates
+        $ca = Get-ADObject -SearchBase $enrollPath -LDAPFilter "(cn={{ ca_common_name }})" -Properties certificateTemplates
+        if (-not $ca) { throw "CA enrollment object '{{ ca_common_name }}' not registered yet" }
         $templates = @()
         if ($ca.certificateTemplates) { $templates = @($ca.certificateTemplates) }
         if ($templates -notcontains "VulnUserAuth") {
           $templates += "VulnUserAuth"
           Set-ADObject -Identity $ca.DistinguishedName -Replace @{certificateTemplates=$templates}
         }
+        Write-Host "PUBLISHED"
+      register: publish_tpl
+      retries: 12
+      delay: 15
+      until: "'PUBLISHED' in publish_tpl.stdout"
+      changed_when: false

@@ -19,7 +19,7 @@
           - libssl-dev
           - libffi-dev
           - build-essential
-          - crackmapexec
+          - netexec          # modern replacement for the removed crackmapexec
           - impacket-scripts
           - pipx
         state: present
@@ -41,8 +41,8 @@
       ansible.builtin.command: /usr/bin/impacket-getTGT -h
       changed_when: false
 
-    - name: Verify CrackMapExec
-      ansible.builtin.command: crackmapexec -h
+    - name: Verify NetExec
+      ansible.builtin.command: netexec --version
       changed_when: false
 
     - name: Ensure user PATH includes ~/.local/bin
