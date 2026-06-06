@@ -10,6 +10,7 @@
 
     - name: Reboot if hostname changed
       ansible.windows.win_reboot:
+        reboot_timeout: 1800
       when: hostname_result.reboot_required
 
 - name: Build domain on DC
@@ -27,6 +28,7 @@
 
     - name: Reboot after AD DS install to ensure clean state
       ansible.windows.win_reboot:
+        reboot_timeout: 1800
 
     # Set the built-in Administrator password BEFORE promotion, while this is
     # still a standalone server. Promotion turns the local Administrator into the
@@ -49,6 +51,7 @@
 
     - name: Reboot after domain creation
       ansible.windows.win_reboot:
+        reboot_timeout: 1800
       when: domain_create.reboot_required
 
     # Keep the Windows firewall ENABLED (realistic) but trust the isolated lab
@@ -95,4 +98,5 @@
 
     - name: Reboot after domain join
       ansible.windows.win_reboot:
+        reboot_timeout: 1800
       when: domain_join.reboot_required

@@ -12,6 +12,7 @@
 
     - name: Reboot if AD CS role requires it
       ansible.windows.win_reboot:
+        reboot_timeout: 1800
       when: adcs_role.reboot_required | default(false)
 
     - name: Configure Enterprise Root CA
@@ -50,6 +51,7 @@
 
     - name: Reboot after AD CS install
       ansible.windows.win_reboot:
+        reboot_timeout: 1800
 
 # The DC needs a Domain Controller / Kerberos Authentication certificate from the
 # new Enterprise CA before it can validate PKINIT logons -- without it, certificate
