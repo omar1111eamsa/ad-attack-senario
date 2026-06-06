@@ -50,3 +50,29 @@
 
     - name: Reboot after AD CS install
       ansible.windows.win_reboot:
+
+# The DC needs a Domain Controller / Kerberos Authentication certificate from the
+# new Enterprise CA before it can validate PKINIT logons -- without it, certificate
+# authentication (the ESC1 payoff) fails with KDC_ERROR_CLIENT_NOT_TRUSTED.
+- name: Enroll DC certificates for PKINIT
+  hosts: dc
+  gather_facts: no
+  become: yes
+  become_method: runas
+  become_user: "{{ domain_user }}"
+  tasks:
+    - name: Trigger certificate auto-enrollment on the DC
+      ansible.windows.win_shell: |
+        gpupdate /force | Out-Null
+        certutil -pulse | Out-Null
+        $auth = Get-ChildItem Cert:\LocalMachine\My | Where-Object {
+          $_.EnhancedKeyUsageList.FriendlyName -match "Kerberos|Domain Controller|Smart Card Logon|Server Authentication"
+        }
+        Write-Host ("DC_AUTH_CERTS=" + ($auth | Measure-Object).Count)
+      args:
+        executable: powershell.exe
+      register: dc_enroll
+      retries: 10
+      delay: 20
+      until: "'DC_AUTH_CERTS=0' not in dc_enroll.stdout"
+      changed_when: false

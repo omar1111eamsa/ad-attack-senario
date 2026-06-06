@@ -28,17 +28,24 @@
     - name: Reboot after AD DS install to ensure clean state
       ansible.windows.win_reboot:
 
+    # Set the built-in Administrator password BEFORE promotion, while this is
+    # still a standalone server. Promotion turns the local Administrator into the
+    # domain Administrator and carries this password over -- doing it afterwards
+    # races with the promotion reboot and does not persist.
+    - name: Set and enable the local Administrator account before promotion
+      ansible.windows.win_shell: |
+        net user Administrator "{{ domain_password }}"
+        net user Administrator /active:yes
+      args:
+        executable: powershell.exe
+      changed_when: false
+
     - name: Promote DC and create forest
       microsoft.ad.domain:
         dns_domain_name: "{{ domain_name }}"
         domain_netbios_name: "{{ domain_netbios }}"
         safe_mode_password: "{{ safe_mode_password }}"
       register: domain_create
-
-    - name: Set domain Administrator password to expected value
-      ansible.windows.win_shell: net user Administrator "{{ domain_password }}"
-      when: domain_create is succeeded
-      changed_when: false
 
     - name: Reboot after domain creation
       ansible.windows.win_reboot:
@@ -58,6 +65,13 @@
       register: dc_fw
       changed_when: "'CREATED' in dc_fw.stdout"
 
+    - name: Wait for the DC to serve LDAP (AD fully up) before members join
+      ansible.windows.win_wait_for:
+        host: "{{ dc_ip }}"
+        port: 389
+        timeout: 300
+        delay: 10
+
 - name: Join member servers and workstation to domain
   hosts: ca,win10
   gather_facts: no
@@ -68,13 +82,16 @@
         ipv4_addresses:
           - "{{ dc_ip }}"
 
-    - name: Join domain
+    - name: Join domain (retry until the DC is reachable and serving)
       microsoft.ad.membership:
         dns_domain_name: "{{ domain_name }}"
         domain_admin_user: "{{ domain_user }}"
         domain_admin_password: "{{ domain_password }}"
         state: domain
       register: domain_join
+      retries: 10
+      delay: 30
+      until: domain_join is succeeded
 
     - name: Reboot after domain join
       ansible.windows.win_reboot:

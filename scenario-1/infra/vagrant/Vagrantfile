@@ -59,7 +59,7 @@ Vagrant.configure("2") do |config|
   windows_vm(config, "ca", BOX_SERVER, "#{NETWORK}.20", 2048, 2)
   
   # Windows 10 Client
-  windows_vm(config, "win10", BOX_WIN10, "#{NETWORK}.40", 3072, 2)
+  windows_vm(config, "win10", BOX_WIN10, "#{NETWORK}.40", 2048, 2)
   
   # Kali Attacker (with Ansible provisioner)
   config.vm.define "attacker" do |node|

@@ -258,6 +258,23 @@ ansible-playbook -i inventory.yml playbooks/06-esc1-template.yml
 
 ## 🐛 Troubleshooting
 
+### ⚠️ Docker breaks VM networking (important)
+
+If **Docker** is installed on the host, it sets the iptables/nftables `FORWARD`
+policy to `drop` and enables `bridge-nf-call-iptables`, which silently blocks
+**guest-to-guest traffic** on the libvirt bridge. Symptoms: the DC builds but
+members fail to join with *"the domain cannot be contacted"* or *"trust
+relationship failed"*. Stop Docker for the duration of the lab:
+
+```bash
+sudo systemctl stop docker docker.socket containerd
+sudo sysctl -w net.bridge.bridge-nf-call-iptables=0
+sudo systemctl restart libvirtd          # re-adds libvirt's NAT rules cleanly
+```
+
+Re-enable Docker later with `sudo systemctl start docker` (the lab networking
+will break again while Docker is running).
+
 ### VMs Not Starting
 
 ```bash
