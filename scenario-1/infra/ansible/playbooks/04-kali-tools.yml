@@ -4,27 +4,31 @@
   gather_facts: no
   become: true
   tasks:
-    - name: Update apt cache
+    # apt against the Kali mirror can be unavailable on restricted networks; the
+    # core attack only needs certipy (installed from PyPI via pipx below) and
+    # impacket (preinstalled on Kali), so apt steps are best-effort, not fatal.
+    - name: Update apt cache (best-effort)
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
+      failed_when: false
 
-    - name: Install system dependencies
+    - name: Install extra tooling (best-effort)
       ansible.builtin.apt:
         name:
-          - python3
-          - python3-pip
-          - python3-venv
-          - python3-dev
-          - libssl-dev
-          - libffi-dev
-          - build-essential
+          - pipx
           - netexec          # modern replacement for the removed crackmapexec
           - impacket-scripts
-          - pipx
+          - libssl-dev
+          - libffi-dev
         state: present
+      failed_when: false
 
-    - name: Install Certipy with pipx
+    - name: Ensure pipx is available (fallback via pip if apt was blocked)
+      ansible.builtin.shell: command -v pipx || python3 -m pip install --user --break-system-packages pipx
+      changed_when: false
+
+    - name: Install Certipy with pipx (from PyPI)
       ansible.builtin.command: pipx install certipy-ad
       become_user: vagrant
       environment:
@@ -33,17 +37,18 @@
       args:
         creates: /home/vagrant/.local/bin/certipy
 
-    - name: Verify Certipy
+    - name: Verify Certipy (required)
       ansible.builtin.command: /home/vagrant/.local/bin/certipy --version
       changed_when: false
 
-    - name: Verify Impacket
-      ansible.builtin.command: /usr/bin/impacket-getTGT -h
+    - name: Verify Impacket (required; preinstalled on Kali)
+      ansible.builtin.command: impacket-getTGT -h
       changed_when: false
 
-    - name: Verify NetExec
+    - name: Verify NetExec (optional)
       ansible.builtin.command: netexec --version
       changed_when: false
+      failed_when: false
 
     - name: Ensure user PATH includes ~/.local/bin
       ansible.builtin.lineinfile:
