@@ -65,3 +65,7 @@ scenario-1/docs/*.log
 scenario-1/docs/*.out
 scenario-1/docs/*.toc
 scenario-1/docs/ad-esc1-lab.pdf
+scenario-1/docs/*.nav
+scenario-1/docs/*.snm
+scenario-1/docs/*.vrb
+scenario-1/docs/ad-esc1-presentation.pdf
