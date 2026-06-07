@@ -171,12 +171,13 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
     │   │   │   ├── all/               # vars.yml (data) + vault.yml (secret)
     │   │   │   ├── windows.yml        # WinRM connection settings
     │   │   │   └── linux.yml          # SSH connection settings
-    │   │   └── playbooks/
+    │   │   └── playbooks/             # numbered in execution order
     │   │       ├── site.yml           # Ordered master pipeline
-    │   │       ├── 00-network.yml     01-domain.yml   02-adcs.yml
-    │   │       ├── 03-software-gpo.yml 04-kali-tools.yml 05-win10-software.yml
-    │   │       ├── 06-esc1-template.yml 07-test-user.yml 08-ldaps-config.yml
-    │   │       └── 98-enable-icmp.yml  99-fix-enroll-permission.yml
+    │   │       ├── 00-network.yml      01-enable-icmp.yml  02-domain.yml
+    │   │       ├── 03-adcs.yml         04-ldaps-config.yml 05-software-gpo.yml
+    │   │       ├── 06-kali-tools.yml   07-win10-software.yml 08-esc1-template.yml
+    │   │       ├── 09-test-user.yml    10-fix-enroll-permission.yml
+    │   │       └── optional/          # manual helpers (not in site.yml)
     │   └── vagrant/
     │       └── Vagrantfile            # 4-VM libvirt definitions + provisioner
     └── scripts/
@@ -238,7 +239,7 @@ cd scenario-1/infra/ansible
 ansible-playbook -i inventory.yml playbooks/site.yml
 
 # Run specific playbook
-ansible-playbook -i inventory.yml playbooks/06-esc1-template.yml
+ansible-playbook -i inventory.yml playbooks/08-esc1-template.yml
 ```
 
 ## 🔐 Default Credentials
@@ -313,19 +314,19 @@ ansible dc -i scenario-1/infra/ansible/inventory.yml -m win_ping
 
 ### GPO / "Not associated with Active Directory domain or forest"
 
-If `03-software-gpo` fails with that error, the playbook now uses `-Domain serini.lab` for Get-GPO/New-GPO. Ensure `01-domain` and `02-adcs` have completed (including reboots) before `03-software-gpo` runs.
+If `05-software-gpo` fails with that error, the playbook now uses `-Domain serini.lab` for Get-GPO/New-GPO. Ensure `02-domain` and `03-adcs` have completed (including reboots) before `05-software-gpo` runs.
 
 ### ESC1 Exploitation Failing
 
 1. Ensure LDAPS is configured:
    ```bash
    cd scenario-1/infra/ansible
-   ansible-playbook -i inventory.yml playbooks/08-ldaps-config.yml
+   ansible-playbook -i inventory.yml playbooks/04-ldaps-config.yml
    ```
 
 2. Verify template permissions:
    ```bash
-   ansible-playbook -i inventory.yml playbooks/99-fix-enroll-permission.yml
+   ansible-playbook -i inventory.yml playbooks/10-fix-enroll-permission.yml
    ```
 
 3. Check DNS on Kali:

@@ -18,9 +18,9 @@ Before starting the attack, ensure:
 - [ ] All required VMs are running (DC, CA, Attacker). Win10 is optional for validating ESC1.
 - [ ] Domain `serini.lab` is created
 - [ ] AD-CS is installed on CA server
-- [ ] Vulnerable template created (run Ansible playbook `playbooks/06-esc1-template.yml`)
-- [ ] Test user created (run Ansible playbook `playbooks/07-test-user.yml`)
-- [ ] Certipy installed on Kali (run Ansible playbook `playbooks/04-kali-tools.yml`)
+- [ ] Vulnerable template created (run Ansible playbook `playbooks/08-esc1-template.yml`)
+- [ ] Test user created (run Ansible playbook `playbooks/09-test-user.yml`)
+- [ ] Certipy installed on Kali (run Ansible playbook `playbooks/06-kali-tools.yml`)
 
 ---
 

@@ -1,12 +1,13 @@
 ---
+# Master playbook. Playbooks are numbered in execution order.
 - import_playbook: 00-network.yml
-- import_playbook: 98-enable-icmp.yml
-- import_playbook: 01-domain.yml
-- import_playbook: 02-adcs.yml
-- import_playbook: 08-ldaps-config.yml
-- import_playbook: 03-software-gpo.yml
-- import_playbook: 04-kali-tools.yml
-- import_playbook: 05-win10-software.yml
-- import_playbook: 06-esc1-template.yml
-- import_playbook: 07-test-user.yml
-- import_playbook: 99-fix-enroll-permission.yml
+- import_playbook: 01-enable-icmp.yml
+- import_playbook: 02-domain.yml
+- import_playbook: 03-adcs.yml
+- import_playbook: 04-ldaps-config.yml
+- import_playbook: 05-software-gpo.yml
+- import_playbook: 06-kali-tools.yml
+- import_playbook: 07-win10-software.yml
+- import_playbook: 08-esc1-template.yml
+- import_playbook: 09-test-user.yml
+- import_playbook: 10-fix-enroll-permission.yml
