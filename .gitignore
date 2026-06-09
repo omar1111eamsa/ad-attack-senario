@@ -70,3 +70,6 @@ scenario-1/docs/*.snm
 scenario-1/docs/*.vrb
 scenario-1/docs/ad-esc1-presentation.pdf
 scenario-1/docs/ad-esc1-rapport-fr.pdf
+
+# tous les PDF generes de docs/ (regenerables)
+scenario-1/docs/*.pdf
