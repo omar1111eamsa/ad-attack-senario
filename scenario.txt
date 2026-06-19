@@ -52,7 +52,6 @@ Persistence:
 - Example:
 
 
-
 o
 o
 
@@ -101,7 +100,6 @@ Example: PKINIT via shadow private key
 
 Objective: Become permanent admin
 Example: Modify admin ACL inheritance on target user
-
 
 
 6. C2: Kerberos-only C2
@@ -159,7 +157,6 @@ various scenarios into a complete end‑to‑end intrusion flow.
 Good Luck
 
 !!
-
 
 
 

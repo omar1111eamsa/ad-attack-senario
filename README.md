@@ -157,7 +157,7 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 
 ```
 .
-├── scenario.txt / scenario.pdf       # The training brief (3 scenarios)
+├── scenario.txt                      # The training brief (3 scenarios)
 ├── README.md
 └── scenario-1/
     ├── docs/
