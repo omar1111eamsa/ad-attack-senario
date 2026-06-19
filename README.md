@@ -161,8 +161,7 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 ├── README.md
 └── scenario-1/
     ├── docs/
-    │   ├── attack-guide.md            # Step-by-step exploitation walkthrough
-    │   └── ad-esc1-lab.tex            # Technical report (infra-focused)
+    │   └── attack-guide.md            # Step-by-step exploitation walkthrough
     ├── infra/
     │   ├── ansible/
     │   │   ├── ansible.cfg
