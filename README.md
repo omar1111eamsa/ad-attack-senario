@@ -6,7 +6,7 @@ This repository is a fully automated, **Infrastructure-as-Code** lab that stands
 
 A single `vagrant up` provisions everything: four VMs (Domain Controller, Certificate Authority, Windows 10 client, Kali attacker), the AD domain, the CA, the vulnerable certificate template, a victim user, and the attacker toolkit — with no manual steps.
 
-## 🧠 Why build the lab *and* break it?
+## Why build the lab *and* break it?
 
 Reading about an attack is not the same as understanding it. This project is built on a simple idea: **you learn how a penetration test really works by first building the target, then exploiting it.**
 
@@ -16,11 +16,11 @@ Reading about an attack is not the same as understanding it. This project is bui
 
 This mirrors a real engagement: you map the environment, enumerate services and misconfigurations, gain a foothold, escalate privileges, establish persistence, and finally reason about **detection and defense**. You come away understanding *both sides* — how the vulnerability exists **and** how it is abused — not just a copy-paste exploit.
 
-## 🎯 The vulnerability: AD CS ESC1
+## The vulnerability: AD CS ESC1
 
 **ESC1** is a critical AD CS misconfiguration. A certificate template that simultaneously (1) allows **client authentication**, (2) lets the **enrollee supply the subject** (`ENROLLEE_SUPPLIES_SUBJECT`), and (3) is **enrollable by low-privileged users** lets any domain user request a certificate *in the name of the Domain Administrator* and authenticate as them — privilege escalation from zero to Domain Admin in minutes.
 
-## 🗺️ The learning path
+## The learning path
 
 1. **Build** — `vagrant up` provisions the whole lab (this README).
 2. **Attack** — follow [`scenario-1/docs/attack-guide.md`](scenario-1/docs/attack-guide.md) step by step: enumerate → request → authenticate → DCSync.
@@ -28,7 +28,7 @@ This mirrors a real engagement: you map the environment, enumerate services and 
 4. **Defend** — the guide closes with detection (CA/DC Event IDs) and remediation.
 5. **Iterate** — destroy it, rebuild it, try variations, harden it, attack again.
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before starting, ensure you have the following installed on your host:
 
@@ -49,7 +49,7 @@ Before starting, ensure you have the following installed on your host:
 
    # Install dependencies for vagrant-libvirt
    sudo apt install libvirt-dev
-   
+
    # Install vagrant-libvirt plugin
    vagrant plugin install vagrant-libvirt
    ```
@@ -58,7 +58,7 @@ Before starting, ensure you have the following installed on your host:
    ```bash
    # Ubuntu/Debian
    sudo apt install ansible
-   
+
    # Python WinRM for Windows management
    pip3 install pywinrm
    ```
@@ -69,7 +69,7 @@ Before starting, ensure you have the following installed on your host:
 - **Disk Space**: At least 80 GB free
 - **CPU**: 4 cores minimum (8 cores recommended)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone the Repository
 
@@ -111,7 +111,7 @@ vagrant up
 - Set up test user account
 - Install attack tools on Kali
 
-**⏱️ First run takes 30-60 minutes** depending on your internet speed and hardware.
+**First run takes 30-60 minutes** depending on your internet speed and hardware.
 
 ### 5. Wait for Provisioning
 
@@ -128,7 +128,7 @@ win10                      : ok=XX    changed=XX    ...
 attacker                   : ok=XX    changed=XX    ...
 ```
 
-## 🎓 Exploiting ESC1
+## Exploiting ESC1
 
 ### SSH into Attacker Machine
 
@@ -151,7 +151,7 @@ secretsdump.py -hashes :HASH_FROM_STEP_2 administrator@192.168.56.10
 
 Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 
-## 🏗️ Lab Architecture
+## Lab Architecture
 
 ```
 ┌─────────────────────┐
@@ -175,7 +175,7 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
 └─────────────────────┘
 ```
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 .
@@ -207,7 +207,7 @@ Replace `HASH_FROM_STEP_2` with the NT hash you received in step 2.
         └── 08-persistence-dcsync-account.ps1   # post-exploit persistence
 ```
 
-## 🔧 Useful Commands
+## Useful Commands
 
 ### VM Management
 
@@ -249,7 +249,7 @@ cd scenario-1/infra/vagrant
 vagrant provision
 ```
 
-## 🧪 Manual Ansible Execution
+## Manual Ansible Execution
 
 If you want to run Ansible playbooks manually:
 
@@ -263,7 +263,7 @@ ansible-playbook -i inventory.yml playbooks/site.yml
 ansible-playbook -i inventory.yml playbooks/08-esc1-template.yml
 ```
 
-## 🔐 Default Credentials
+## Default Credentials
 
 ### Domain Admin
 - **Username**: `SERINI\Administrator`
@@ -278,9 +278,9 @@ ansible-playbook -i inventory.yml playbooks/08-esc1-template.yml
 - **Username**: `vagrant`
 - **Password**: `vagrant`
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### ⚠️ Docker breaks VM networking (important)
+### Docker breaks VM networking (important)
 
 If **Docker** is installed on the host, it sets the iptables/nftables `FORWARD`
 policy to `drop` and enables `bridge-nf-call-iptables`, which silently blocks
@@ -355,24 +355,24 @@ If `05-software-gpo` fails with that error, the playbook now uses `-Domain serin
    vagrant ssh attacker -c "cat /etc/hosts | grep serini"
    ```
 
-## 📚 Learning Resources
+## Learning Resources
 
 - [AD CS ESC1 Vulnerability Details](https://posts.specterops.io/certified-pre-owned-d95910965cd2)
 - [Certipy Documentation](https://github.com/ly4k/Certipy)
 - [Active Directory Security](https://adsecurity.org/)
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This lab is for **educational purposes only**. Only use these techniques in authorized environments. Unauthorized access to computer systems is illegal.
 
-## 📝 License
+## License
 
 MIT License - See LICENSE file for details
 
-## 🤝 Contributing
+## Contributing
 
 Feel free to open issues or submit pull requests to improve this lab!
 
-## 👨‍💻 Author
+## Author
 
 Created for Active Directory security training and ESC1 vulnerability demonstration.

