@@ -1,10 +1,32 @@
-# AD Attack Scenario - ESC1 Vulnerability Lab
+# AD CS ESC1 — A Build-It-Then-Break-It Active Directory Lab
 
-This repository contains a fully automated Active Directory Certificate Services (AD CS) ESC1 vulnerability lab environment.
+> Learn offensive security the way it actually sticks: **build the target yourself, then exploit it end to end.**
 
-## 🎯 What This Lab Does
+This repository is a fully automated, **Infrastructure-as-Code** lab that stands up a small Active Directory forest with an Enterprise Certificate Authority (AD CS), deliberately misconfigured with the **ESC1** vulnerability — and then hands you the tooling to compromise it from a low-privileged domain user all the way to **Domain Admin** and full directory replication (**DCSync**).
 
-Demonstrates the **ESC1 vulnerability** - a critical AD CS misconfiguration that allows privilege escalation from a low-privileged domain user to Domain Administrator by exploiting certificate templates that allow Subject Alternative Name (SAN) specification.
+A single `vagrant up` provisions everything: four VMs (Domain Controller, Certificate Authority, Windows 10 client, Kali attacker), the AD domain, the CA, the vulnerable certificate template, a victim user, and the attacker toolkit — with no manual steps.
+
+## 🧠 Why build the lab *and* break it?
+
+Reading about an attack is not the same as understanding it. This project is built on a simple idea: **you learn how a penetration test really works by first building the target, then exploiting it.**
+
+- **Building** the environment as code forces you to understand the terrain — DNS, Kerberos, Active Directory Certificate Services, certificate templates, enrollment rights, and domain trust. You see *exactly* how a real-world misconfiguration (ESC1) gets introduced, instead of treating it as a black box.
+- **Exploiting** it then walks the full kill chain on infrastructure you understand intimately: enumerate the domain → spot the weak template → request a certificate as Administrator → authenticate via Kerberos PKINIT → escalate to Domain Admin → DCSync the whole directory → persist stealthily.
+- Because the lab is **reproducible and disposable** (`vagrant destroy` / `vagrant up`), you can break it, patch it, and retry as many times as you want — the feedback loop that actually builds skill.
+
+This mirrors a real engagement: you map the environment, enumerate services and misconfigurations, gain a foothold, escalate privileges, establish persistence, and finally reason about **detection and defense**. You come away understanding *both sides* — how the vulnerability exists **and** how it is abused — not just a copy-paste exploit.
+
+## 🎯 The vulnerability: AD CS ESC1
+
+**ESC1** is a critical AD CS misconfiguration. A certificate template that simultaneously (1) allows **client authentication**, (2) lets the **enrollee supply the subject** (`ENROLLEE_SUPPLIES_SUBJECT`), and (3) is **enrollable by low-privileged users** lets any domain user request a certificate *in the name of the Domain Administrator* and authenticate as them — privilege escalation from zero to Domain Admin in minutes.
+
+## 🗺️ The learning path
+
+1. **Build** — `vagrant up` provisions the whole lab (this README).
+2. **Attack** — follow [`scenario-1/docs/attack-guide.md`](scenario-1/docs/attack-guide.md) step by step: enumerate → request → authenticate → DCSync.
+3. **Understand** — every step in the guide explains *what it does and why it works*, not just the command.
+4. **Defend** — the guide closes with detection (CA/DC Event IDs) and remediation.
+5. **Iterate** — destroy it, rebuild it, try variations, harden it, attack again.
 
 ## 📋 Prerequisites
 
